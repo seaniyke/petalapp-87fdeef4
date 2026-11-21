@@ -14,7 +14,7 @@ describe("modern hero rules", () => {
     expect(renderBrandContractBlock({ isInitial: true })).toMatch(/typographic wordmark/);
   });
   it("composition bans highlighted words", () => {
-    expect(COMPOSITION_RULES).toMatch(/Never colour, italicise or highlight a single word/);
+    expect(COMPOSITION_RULES).toMatch(/accent word, italic or gradient is welcome/);
   });
 });
 

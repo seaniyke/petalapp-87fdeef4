@@ -22,13 +22,14 @@ export const HERO_CONTRACT = `
 Design the hero for THIS business and brief — bold centred type, a full-bleed photograph, an editorial split or a quiet type-only header are all fine. Restraint is the look.
 
 1. **Optional kicker** — usually leave it out. If used: plain text only (\`text-sm font-medium text-muted-foreground\`, sentence case), never a pill, badge, chip or icon, and NEVER the address, location, opening hours or rating — those go in the hours/contact section or the footer.
-2. **H1** — display font, \`text-hero\` (fluid, comfortable letter spacing — never squeezed), max 2 lines on desktop, 3 on phone, one colour. Never colour, italicise, highlight or gradient a single word.
+2. **H1** — display font, \`text-hero\` (fluid, comfortable letter spacing — never squeezed), usually 2 lines on desktop and 3 on phone. One colour is the calm default; an accent word, italic or gradient is yours to use when the brand or the person's brief calls for it.
 3. **Subhead** — optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
 4. **Action** — ONE primary \`<Button size="lg">\`; an optional second action is \`<Button size="lg" variant="glass">\` or a quiet text link with an arrow.
 5. **Visual** — choose the medium that tells this story best:
    - a full-bleed or split \`petal-image://\` photograph (\`object-cover\`, explicit aspect ratio);
-   - a looping video with \`<HeroVideo>\` from \`@/components/flow\` (muted, inline, poster image, darkening scrim, still poster under reduced motion) — only with a real video URL the person supplied; otherwise use the photograph as the poster-style hero;
-   - an atmospheric canvas — \`mesh-backdrop\`, \`<Spotlight>\`, layered glass, scroll-scaled imagery;
+   - living background motion — animated mesh or gradient washes, drifting light, \`<Spotlight>\`, layered glass, parallax or scroll-scaled imagery, canvas/physics motion; whatever movement fits the feeling the person wants;
+   - a looping video with \`<HeroVideo>\` from \`@/components/flow\` (muted, inline, poster, scrim) using the person's video when they give one;
+   - any mix of these — motion can run behind the whole page, not only the top;
    - a type-led hero with no picture is fine when the brand suits it; for SaaS, one framed product screenshot.
    The hero background runs edge to edge; text over media uses light text and a scrim so it always reads.
 6. **Keep the fold focused** — when the layout direction puts a booking flow, live product moment or selector beside the headline (split screen, bento), that is welcome; otherwise supporting content lives in its own sections below.`;

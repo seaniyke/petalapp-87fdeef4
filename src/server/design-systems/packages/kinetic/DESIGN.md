@@ -1,6 +1,6 @@
 # Kinetic — playbook
 
-Energy first. Syne (wide, expressive) for display at huge sizes, Plus Jakarta Sans for everything else. Colour comes in solid blocks, never gradients. The page should feel like it is moving even when it is still.
+Energy first. Syne (wide, expressive) for display at huge sizes, Plus Jakarta Sans for everything else. Colour comes mostly in solid blocks; gradients are welcome when they add energy. The page should feel like it is moving even when it is still.
 
 ## Non-negotiable
 

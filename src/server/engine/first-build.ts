@@ -71,7 +71,7 @@ export const FINISH_RULES = [
   "Section changes are calm: alternate only between bg-background and a near tone (bg-muted/40) with a thin border-t border-border/60 between bands — never a harsh jump between unrelated surfaces.",
   "Buttons are compact (rounded-md to rounded-xl). Secondary actions and buttons over imagery use <Button variant=\"glass\"> for a frosted look. Labels are plain sentence-case text, not chips.",
   "Header is one clean line: wordmark left, at most 5 text links, one icon or one button right. Brand on the left is a bold, readable wordmark (display font, semibold+), optionally with one simple SVG mark drawn for this business; no tagline stacked under it.",
-  "Never colour, italicise or highlight a single word inside a heading. Headings are one colour, one style.",
+  "Headings default to one colour and one style; an accent word, italic or gradient is welcome when the brand or brief calls for it.",
   "Footer is quiet and complete: brand, the requested page links, contact line and © year, in text-sm text-muted-foreground on a border-t.",
 ];
 

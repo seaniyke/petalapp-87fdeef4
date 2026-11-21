@@ -347,9 +347,9 @@ Anti-slop rules — these are hard constraints on the direction you commit to:
 1. No symmetric card triplets as the primary rhythm. If a section has three peers, break it: change one card's span, offset it vertically, or make the first one a full-width statement.
 2. Colour with intent. One primary hue for actions and key marks, optionally one supporting hue, plus neutrals. Quiet, neutral, cream and editorial palettes are welcome when they fit the business. Never a stock purple-to-indigo gradient.
 2b. Contrast is non-negotiable: body text ≥ 4.5:1 against its surface, large display text ≥ 3:1, and every filled button's label must contrast against its own fill (never a light accent with white text). If a hue is too light for white text, darken the fill instead of lightening the text.
-2c. Prefer directions modern studios actually ship: quiet editorial, warm natural, crisp monochrome, confident colour-block, technical. No vivid-gradient, neon or glassy directions.
-3. No purple/indigo-on-white gradient heroes, no glowing blurred blobs behind centered text, no floating sparkle icon as the hero graphic.
-4. Type must have a scale jump: display headings at least 3x the body size, with tight negative tracking. Even a "minimal" direction commits to one oversized element per screen.
+2c. Prefer directions modern studios actually ship: quiet editorial, warm natural, crisp monochrome, confident colour-block, technical. Vivid gradient, neon, glassy and motion-rich directions are welcome when the business or brief asks for that energy.
+3. Make the hero graphic belong to this business — a stock purple-on-white gradient or a floating sparkle icon reads as generic unless the person asked for it.
+4. Type must have a scale jump: display headings at least 3x the body size, with comfortable letter spacing. Even a "minimal" direction commits to one oversized element per screen.
 5. Motion is one register applied consistently — pick a single easing and duration family. Never mix a bouncy spring with a slow cinematic fade in the same app.
 6. Every section needs a reason to look different from the one above it. Alternating background tone alone is not a reason; change the layout axis, the density, or the type treatment.
 
