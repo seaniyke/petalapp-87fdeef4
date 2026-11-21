@@ -51,7 +51,7 @@ const ACCENT_RULES: Array<{ accent: string; re: RegExp }> = [
 // dark package. "Luxury", "premium" and "high-end" do NOT: premium brands
 // (Apple, Aesop, Mercury, medspas) are overwhelmingly light, and the old rule
 // turned a bright luxury clinic into a black-and-gold site.
-const DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic)\w*/i;
+const DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic|near[- ]black|black (canvas|background|theme|site|website)|all[- ]black|pitch[- ]black|vercel|linear\.app|apple[- ]style dark)\w*/i;
 
 /**
  * Studio packages chosen by the brief's domain, after the dark-editorial rule
@@ -112,7 +112,7 @@ const LOOK_FAMILIES: Array<{ id: string; re: RegExp; picks: LookPick[] }> = [
   {
     id: "lifestyle",
     re: /\b(salon|beauty|spa|skincare|nail|barber|lash|brow|boutique|wedding|bridal|florist|flower|hotel|retreat|resort|wellness|fashion|jewel)\w*/i,
-    picks: [{ slug: "atelier", accent: "rose" }, { slug: "atelier", accent: "bronze" }, { slug: "bloom", accent: "berry" }, { slug: "monolith", accent: "graphite" }],
+    picks: [{ slug: "atelier", accent: "rose" }, { slug: "atelier", accent: "bronze" }, { slug: "bloom", accent: "berry" }, { slug: "atelier", accent: "sage" }],
   },
   {
     id: "product",
