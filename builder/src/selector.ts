@@ -19,3 +19,13 @@ export function splitSelector(selector: string): string[] {
   return parts.filter(Boolean);
 }
 
+
+/**
+ * "header text=Book" (a CSS scope followed by a Playwright engine selector)
+ * is not valid; Playwright needs "header >> text=Book". Rewrite that form.
+ */
+export function normalizeSelectorPart(part: string): string {
+  const m = /^(.*?\S)\s+((?:text|role|data-testid|id)=.*)$/s.exec(part);
+  if (!m || m[1].includes(">>") || /^(text|role|xpath|id|data-testid)=/.test(part)) return part;
+  return `${m[1]} >> ${m[2]}`;
+}
