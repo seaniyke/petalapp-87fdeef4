@@ -20,6 +20,18 @@ export function titleFromPackageJson(content: string): string | null {
   return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ").slice(0, 60);
 }
 
+/** "Atelier Lace Site" / "Atelier Lace — Book" → "Atelier Lace". Generic titles are ignored. */
+export function titleFromIndexHtml(content: string): string | null {
+  const raw = content.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? "";
+  // Keep the first segment: titles often read "Brand — Page" or "Brand | Site".
+  let name = raw.split(/\s+[—–|·-]\s+/)[0]?.trim() ?? "";
+  // Drop trailing filler words the model appends ("Atelier Lace Site" → "Atelier Lace").
+  name = name.replace(/\s+(site|website|app|official|home|homepage|online)$/i, "").trim();
+  if (name.length < 2 || name.length > 60) return null;
+  if (/^(app|my app|untitled|untitled project|website|site|studio|project|document|vite app|react app)$/i.test(name)) return null;
+  return name;
+}
+
 export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
   const db = supabaseAdmin;
   return {
@@ -55,7 +67,19 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
           .eq("project_id", projectId)
           .eq("path", "package.json")
           .maybeSingle();
-        const title = titleFromPackageJson((pkg as { content?: string } | null)?.content ?? "");
+        let title = titleFromPackageJson((pkg as { content?: string } | null)?.content ?? "");
+        if (!title) {
+          // package.json keeps the scaffold default ("petal-app") on most
+          // builds; the brand the model put in the page <title> is the
+          // next-best deterministic source.
+          const { data: html } = await db
+            .from("project_files")
+            .select("content")
+            .eq("project_id", projectId)
+            .eq("path", "index.html")
+            .maybeSingle();
+          title = titleFromIndexHtml((html as { content?: string } | null)?.content ?? "");
+        }
         if (!title) return;
         const { slugifyForProject } = await import("@/lib/projects");
         await db
