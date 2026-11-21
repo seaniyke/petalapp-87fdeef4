@@ -33,4 +33,4 @@ Full-bleed, high-contrast, `object-cover` with an explicit aspect ratio. Text ov
 
 ## Never
 
-Developer/console tropes on consumer sites (`01 //`, `SRV-01`, coordinates, monospace spec sheets, 'protocol'/'dispatch' wording). Harsh red warning banners for policies. Bright saturated fills. Three equal icon-cards. More than one accent hue on a screen.
+Harsh red warning banners for policies. Bright saturated fills. Three equal icon-cards. More than one accent hue on a screen.

@@ -26,6 +26,7 @@ export default defineConfig({
       "src/server/__tests__/website-restraint.test.ts",
       "src/server/__tests__/modern-hero.test.ts",
       "src/server/__tests__/fluid-type-motion.test.ts",
+      "src/server/__tests__/universal-craft.test.ts",
       "src/server/__tests__/dated-design-cleanup.test.ts",
       "src/server/__tests__/solenne-rebuild-regressions.test.ts",
       "src/server/__tests__/customer-privacy.test.ts",

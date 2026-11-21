@@ -31,4 +31,4 @@ Warm, friendly and a little bit silly. Bricolage Grotesque (characterful, chunky
 
 ## Never
 
-Dark luxury palettes, thin hairline-only layouts, monospace, sharp square corners, gradient text, glassmorphism, corporate stock photography.
+Dark luxury palettes, thin hairline-only layouts, monospace, sharp square corners, gradient text, corporate stock photography.

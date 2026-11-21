@@ -47,6 +47,7 @@ import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_BLOCK_FILES_MOBILE_2 } from "./scaffold-kit-mobile-2";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
+import { KIT_FLOW_FILES } from "./scaffold-kit-flow";
 import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
@@ -4372,6 +4373,8 @@ export const KIT_FILES: KitFile[] = [
   // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
   // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
   ...KIT_MOTION_FILES,
+  // Fluid experience primitives: Surface / ChoiceGrid / StepFlow / Disclosure.
+  ...KIT_FLOW_FILES,
   // Phase 12 — Missing shadcn primitives. 18 components mirroring shadcn's
   // API: Breadcrumb, Collapsible, HoverCard, Toggle + ToggleGroup, AspectRatio,
   // Spinner, ContextMenu, Menubar, NavigationMenu, Empty, Field, InputGroup,

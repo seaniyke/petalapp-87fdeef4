@@ -5,7 +5,7 @@ Swiss and architectural. Archivo Black for display (it has one heavy weight), Ar
 ## Non-negotiable
 
 - **Semantic tokens only.** `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`. Never hex or raw palette utilities.
-- **Square corners.** Every radius token is zero — do not add `rounded-*` classes (except `rounded-full` on avatars).
+- **Architectural geometry.** Crisp, low-radius edges carry the look; photography and full-bleed imagery may use soft corners.
 - **Rules, not shadows.** Separate content with `border-t border-border` / `divide-y divide-border`. Depth may come from photography and layered imagery; keep card shadows off.
 - **Two faces, fixed roles.** `font-serif` (Archivo Black) for headlines and big index numbers; `font-sans` (Archivo) for everything else.
 
@@ -32,4 +32,4 @@ Swiss and architectural. Archivo Black for display (it has one heavy weight), Ar
 
 ## Never
 
-Rounded cards, drop shadows, gradients, pastel colours, emoji, centred layouts, icon-in-circle feature grids, more than one accent hue.
+Pastel colours, emoji, icon-in-circle feature grids, cramped boxed sections, more than one accent hue.

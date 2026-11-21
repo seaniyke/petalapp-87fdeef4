@@ -23,7 +23,7 @@ Warm editorial studio. Linen paper tones, Fraunces at light weight for display, 
 Reveals 600ms `cubic-bezier(0.16,1,0.3,1)`, 16px rise + fade, 80ms stagger. Image hover `scale-[1.03]` over 900ms. Respect `prefers-reduced-motion`.
 
 ## Never
-Pills, gradients, drop-shadowed cards, bright saturated fills, icon grids, more than one accent moment per screen, hex values.
+Harsh hairline boxes around everything, bright saturated fills, icon grids, more than one accent moment per screen, hex values.
 
 ## Non-negotiable
 Semantic tokens only (`bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`). Buttons are compact rectangles (`rounded-md`).

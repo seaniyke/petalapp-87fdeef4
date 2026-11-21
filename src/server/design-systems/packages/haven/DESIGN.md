@@ -21,7 +21,7 @@ Calm care studio. Sora for display, Nunito Sans for body at a generous size. Eve
 200–300ms `cubic-bezier(0.2,0,0,1)`, fades and 8px rises only. Respect `prefers-reduced-motion`.
 
 ## Never
-Medical stock clichés (stethoscope close-ups), red as decoration, dense jargon, tiny grey text, pills for buttons, hex values.
+Medical stock clichés (stethoscope close-ups), red as decoration, dense jargon, tiny grey text, hex values.
 
 ## Non-negotiable
 Semantic tokens only (`bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`). Buttons are compact rectangles (`rounded-md`).

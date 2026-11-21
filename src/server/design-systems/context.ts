@@ -8,6 +8,7 @@ import type { PicDesignSystem } from "@/server/pic/pic-types";
 import { getDesignSystem } from "./registry";
 import type { DesignSystemPackage } from "./loader";
 import { resolveSelection, withPackageVisuals } from "./authority";
+import { CRAFT_BASELINE } from "./craft-baseline";
 
 export interface DesignPackageSelection {
   systemId: string;
@@ -56,6 +57,7 @@ export function renderDesignSystemContext(pkg: DesignSystemPackage, accent: stri
     comps.length ? `Design-system components installed at src/components/design-system/${pkg.meta.slug}/: ${comps.join(", ")}` : "",
     `### Design playbook (DESIGN.md)`,
     pkg.designMd.trim(),
+    CRAFT_BASELINE,
   ].filter(Boolean).join("\n");
 }
 
