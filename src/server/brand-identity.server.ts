@@ -84,8 +84,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * The product's logo mark. A single source of truth so the header, footer,
- * auth screens and empty states never drift. Colors come from theme tokens,
- * so the mark works in light and dark mode.
+ * auth screens and empty states never drift. It draws in currentColor
+ * (text-foreground by default), so it always contrasts with the surface it
+ * sits on; over a photo or video pass a light class such as text-white/90.
  */
 export function BrandMark({
   className,
@@ -99,7 +100,7 @@ export function BrandMark({
       viewBox="0 0 48 48"
       role="img"
       aria-label="Logo"
-      className={cn("h-8 w-8 shrink-0 text-primary", className)}
+      className={cn("h-8 w-8 shrink-0 text-foreground", className)}
     >
       <rect width="48" height="48" rx="12" fill="currentColor" />
       <text
@@ -108,7 +109,7 @@ export function BrandMark({
         textAnchor="middle"
         fontSize={initials.length > 1 ? 19 : 24}
         fontWeight="800"
-        fill="hsl(var(--primary-foreground, 0 0% 100%))"
+        fill="var(--background, #fff)"
         style={{ fontFamily: "var(--font-display, inherit)" }}
       >
         {initials}

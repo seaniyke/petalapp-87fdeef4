@@ -12,5 +12,7 @@ export const CRAFT_BASELINE = `### Universal craft baseline (applies to every pa
 - Copy restraint: a section is a headline plus at most two short sentences. Cut anything a visitor would skim past.
 - Voice matches the audience. Technical notation (\`01 //\`, item codes, coordinates, monospace spec labels, words like protocol/specification/dispatch) appears ONLY when the product itself is for developers or engineers. "Looks like Vercel/Linear/Apple" means their craft (type, spacing, light, motion), never their jargon.
 - Breathing room: generous section spacing, wide gutters, imagery allowed to go full-bleed. Content is never cramped inside bordered boxes.
-- Forms are experiences: \`<StepFlow>\` for anything over four fields, \`<ChoiceGrid>\` for choices instead of selects/radios, large inputs, one decision per step.
+- Full-bleed canvas: section backgrounds, glows, photography and video run edge to edge; only content sits in \`<Container>\` (1280px default, wider sizes for showcases). Never box the whole page into a narrow column.
+- Forms feel like Apple: \`<StepFlow>\` for anything over four fields, \`<ChoiceGrid>\` or \`<SegmentedControl>\` for choices instead of selects/radios, related fields grouped in one \`<FieldGroup>\`, the kit's large soft inputs (never shrink them to h-9/text-sm), a label above each field, gentle inline errors, one decision per step.
+- Logos and marks inherit \`text-foreground\` so they read on every surface.
 - Depth and motion follow the package's tempo, but every page has at least one moment of movement and one layered surface (\`<Surface>\`, \`glass\`, imagery behind content).`;

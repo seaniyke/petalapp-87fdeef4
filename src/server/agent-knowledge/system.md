@@ -213,8 +213,10 @@ Design for mobile first, then enhance for larger screens:
 - Desktop: 3 columns → lg:grid-cols-3
 - Example: className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
 
-**Container Pattern:**
-- Always use: className="max-w-6xl mx-auto px-4"
+**Width and canvas:**
+- Sections, backgrounds, glows, photography and video run full-bleed (\`w-full\`, edge to edge); only the content inside is centred.
+- Content width: \`<Container>\` (1280px default) or \`size="2xl"\`/\`"fluid"\` for wide showcases; reading text stays near \`max-w-prose\`.
+- Gutters grow with the screen: \`px-5 sm:px-8 lg:px-12 xl:px-16\`.
 
 **Text Sizing:**
 - Use the fluid classes (text-hero, text-display, text-headline, text-subhead); they scale from phone to desktop without breakpoint prefixes

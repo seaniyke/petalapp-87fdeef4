@@ -18,6 +18,10 @@ export { StepFlow } from "./step-flow";
 export type { FlowStep } from "./step-flow";
 export { Disclosure } from "./disclosure";
 export type { DisclosureItem } from "./disclosure";
+export { SegmentedControl } from "./segmented-control";
+export type { Segment } from "./segmented-control";
+export { FieldGroup, FieldRow } from "./field-group";
+export { HeroVideo } from "./hero-video";
 `;
 
 const SURFACE = `import * as React from "react";
@@ -192,10 +196,91 @@ export function Disclosure({ items, className }: { items: DisclosureItem[]; clas
 }
 `;
 
+const SEGMENTED = `import * as React from "react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+
+export interface Segment { value: string; label: React.ReactNode }
+
+/** Apple-style segmented control with a sliding thumb. Use for 2–5 short choices. */
+export function SegmentedControl({ segments, value, onChange, className, ariaLabel }: { segments: Segment[]; value: string; onChange: (v: string) => void; className?: string; ariaLabel?: string }) {
+  const id = React.useId();
+  return (
+    <div role="radiogroup" aria-label={ariaLabel} className={cn("inline-flex w-full rounded-xl bg-muted/60 p-1", className)}>
+      {segments.map((s) => {
+        const on = s.value === value;
+        return (
+          <button key={s.value} type="button" role="radio" aria-checked={on} onClick={() => onChange(s.value)}
+            className={cn("relative flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", on ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+            {on ? <motion.span layoutId={id} className="absolute inset-0 rounded-lg bg-background shadow-sm ring-1 ring-border/60" transition={{ type: "spring", stiffness: 500, damping: 40 }} /> : null}
+            <span className="relative">{s.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+`;
+
+const FIELD_GROUP = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+/** Grouped inset list (iOS Settings / Apple checkout): related fields in one soft panel with hairlines. */
+export function FieldGroup({ title, children, className }: { title?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      {title ? <p className="mb-2 px-1 text-sm font-medium text-muted-foreground">{title}</p> : null}
+      <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card/60 backdrop-blur">{children}</div>
+    </div>
+  );
+}
+
+/** One row inside a FieldGroup: label on the left (or top on phones), borderless control on the right. */
+export function FieldRow({ label, htmlFor, children, className }: { label: React.ReactNode; htmlFor?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-4", className)}>
+      <label htmlFor={htmlFor} className="text-sm font-medium sm:w-40 sm:shrink-0">{label}</label>
+      <div className="flex-1 [&_input]:h-9 [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:shadow-none [&_input]:ring-0">{children}</div>
+    </div>
+  );
+}
+`;
+
+const HERO_VIDEO = `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * Full-bleed looping video hero background. Muted + inline so it autoplays on
+ * phones; shows the poster still when the visitor prefers reduced motion.
+ * Put the headline in children — it sits over a scrim so it always reads.
+ */
+export function HeroVideo({ src, poster, children, className, scrim = "from-black/70 via-black/30 to-black/10" }: { src: string; poster?: string; children?: React.ReactNode; className?: string; scrim?: string }) {
+  const [still, setStill] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setStill(mq.matches);
+  }, []);
+  return (
+    <section className={cn("relative isolate flex min-h-[88svh] w-full items-end overflow-hidden", className)}>
+      {still && poster ? (
+        <img src={poster} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+      ) : (
+        <video className="absolute inset-0 -z-10 h-full w-full object-cover" src={src} poster={poster} autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+      )}
+      <div className={cn("absolute inset-0 -z-10 bg-gradient-to-t", scrim)} aria-hidden="true" />
+      <div className="w-full text-white">{children}</div>
+    </section>
+  );
+}
+`;
+
 export const KIT_FLOW_FILES: KitFile[] = [
   { path: "src/components/flow/index.ts", content: INDEX, overwrite: true },
   { path: "src/components/flow/surface.tsx", content: SURFACE, overwrite: true },
   { path: "src/components/flow/choice-grid.tsx", content: CHOICE_GRID, overwrite: true },
   { path: "src/components/flow/step-flow.tsx", content: STEP_FLOW, overwrite: true },
   { path: "src/components/flow/disclosure.tsx", content: DISCLOSURE, overwrite: true },
+  { path: "src/components/flow/segmented-control.tsx", content: SEGMENTED, overwrite: true },
+  { path: "src/components/flow/field-group.tsx", content: FIELD_GROUP, overwrite: true },
+  { path: "src/components/flow/hero-video.tsx", content: HERO_VIDEO, overwrite: true },
 ];

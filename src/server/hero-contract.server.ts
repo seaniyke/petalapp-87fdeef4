@@ -25,7 +25,12 @@ Design the hero for THIS business and brief — bold centred type, a full-bleed 
 2. **H1** — display font, \`text-hero\` (fluid, comfortable letter spacing — never squeezed), max 2 lines on desktop, 3 on phone, one colour. Never colour, italicise, highlight or gradient a single word.
 3. **Subhead** — optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
 4. **Action** — ONE primary \`<Button size="lg">\`; an optional second action is \`<Button size="lg" variant="glass">\` or a quiet text link with an arrow.
-5. **Visual** — usually a large, sharp \`petal-image://\` photograph (full-bleed or a split), \`object-cover\` with an explicit aspect ratio; a type-led hero with no picture is fine when the brand suits it. For SaaS: one framed product screenshot, no floating cards.
+5. **Visual** — choose the medium that tells this story best:
+   - a full-bleed or split \`petal-image://\` photograph (\`object-cover\`, explicit aspect ratio);
+   - a looping video with \`<HeroVideo>\` from \`@/components/flow\` (muted, inline, poster image, darkening scrim, still poster under reduced motion) — only with a real video URL the person supplied; otherwise use the photograph as the poster-style hero;
+   - an atmospheric canvas — \`mesh-backdrop\`, \`<Spotlight>\`, layered glass, scroll-scaled imagery;
+   - a type-led hero with no picture is fine when the brand suits it; for SaaS, one framed product screenshot.
+   The hero background runs edge to edge; text over media uses light text and a scrim so it always reads.
 6. **Keep the fold focused** — when the layout direction puts a booking flow, live product moment or selector beside the headline (split screen, bento), that is welcome; otherwise supporting content lives in its own sections below.`;
 
 const SAAS_ADDENDUM = `

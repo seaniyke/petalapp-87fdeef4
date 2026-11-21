@@ -547,7 +547,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       type={type}
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-12 w-full rounded-xl border border-border/70 bg-muted/40 px-4 text-base shadow-[inset_0_1px_0_0_rgb(255_255_255/0.04)] transition-[background-color,border-color,box-shadow] duration-200 placeholder:text-muted-foreground/80 hover:border-border focus-visible:outline-none focus-visible:bg-background focus-visible:border-ring/50 focus-visible:ring-4 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -920,7 +920,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "flex min-h-[120px] w-full rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-base leading-relaxed transition-[background-color,border-color,box-shadow] duration-200 placeholder:text-muted-foreground/80 hover:border-border focus-visible:outline-none focus-visible:bg-background focus-visible:border-ring/50 focus-visible:ring-4 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -1268,7 +1268,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-12 w-full items-center justify-between rounded-xl border border-border/70 bg-muted/40 px-4 text-base transition-[background-color,border-color,box-shadow] duration-200 placeholder:text-muted-foreground hover:border-border focus:outline-none focus:bg-background focus:border-ring/50 focus:ring-4 focus:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}
@@ -2188,6 +2188,8 @@ const sizeMap = {
   md: "max-w-4xl",
   lg: "max-w-6xl",
   xl: "max-w-7xl",
+  "2xl": "max-w-[90rem]",
+  fluid: "max-w-[110rem]",
   full: "max-w-none",
 } as const;
 
@@ -2195,12 +2197,16 @@ export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: keyof typeof sizeMap;
 }
 
-/** Centered max-width wrapper with sensible horizontal padding. */
+/**
+ * Centred content width with fluid gutters. Sections and their backgrounds
+ * stay full-bleed; only the content inside sits in a Container.
+ * Sizes: sm/md for reading, xl (default, 1280px), 2xl (1440px), fluid (1760px).
+ */
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
-  ({ className, size = "lg", ...props }, ref) => (
+  ({ className, size = "xl", ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("mx-auto w-full px-4 sm:px-6 lg:px-8", sizeMap[size], className)}
+      className={cn("mx-auto w-full px-5 sm:px-8 lg:px-12 xl:px-16", sizeMap[size], className)}
       {...props}
     />
   ),

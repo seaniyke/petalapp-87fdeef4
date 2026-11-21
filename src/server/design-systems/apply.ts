@@ -56,13 +56,26 @@ function block(selector: string, decls: Record<string, string>): string {
   return lines.length ? `${selector} {\n${lines.join("\n")}\n}` : "";
 }
 
+/**
+ * True when the package's own :root canvas is dark (oklch lightness < 0.5).
+ * Such packages must put their DARK accent on :root — otherwise the accent
+ * written for a light canvas (a near-black primary) lands on a near-black
+ * page and logos, icons and buttons drawn in `primary` disappear.
+ */
+export function isDarkFirst(tokensCss: string): boolean {
+  const root = /:root\s*\{([^}]*)\}/.exec(tokensCss)?.[1] ?? "";
+  const m = /--background:\s*oklch\(\s*([\d.]+)/.exec(root);
+  return m ? Number(m[1]) < 0.5 : false;
+}
+
 export function renderTokenBlock(pkg: DesignSystemPackage, accent: string): string {
   const a = pkg.accents[accent]!;
+  const rootAccent = a.dark && isDarkFirst(pkg.tokensCss) ? a.dark : a.light;
   return [
     TOKENS_START,
     `/* ${pkg.meta.slug}@${pkg.meta.version} accent=${accent} — managed by Petal; edit the package, not this block */`,
     pkg.tokensCss.trim(),
-    block(":root", a.light),
+    block(":root", rootAccent),
     a.dark ? block(".dark", a.dark) : "",
     TOKENS_END,
   ].filter(Boolean).join("\n");
