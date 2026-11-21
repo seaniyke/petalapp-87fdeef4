@@ -1180,7 +1180,18 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     console.warn(`[provider-policy] providers_exhausted (empty allow-list) — not sent`);
     return providersExhaustedResponse();
   }
-  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  // Transient gateway errors (429/5xx/connection) get a short bounded backoff
+  // on the same call before anything else; 4xx are never retried here.
+  const { withProviderRetry } = await import("@/server/engine/provider-retry");
+  let primary = await withProviderRetry(
+    () => dispatch(provider, body, opts.signal, opts.timeoutTier),
+    { signal: opts.signal },
+  );
+  const { readFailure, failureLabel } = await import("@/server/ai-gateway-health.server");
+  const primaryFailure = await readFailure(primary);
+  if (primaryFailure?.needsOperator) {
+    console.error(`[ai-gateway] ${failureLabel(primary.status, primaryFailure)}`);
+  }
   // The gateway owns provider failover. A 404 on a code call means it found
   // no eligible endpoint for this model: terminal for this call, never
   // re-sent (not even on the fallback model).
@@ -1235,7 +1246,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       status: primary.status,
       latencyMs: latency,
       fallbackUsed: false,
-      errorMessage: primary.ok ? null : `HTTP ${primary.status}`,
+      errorMessage: primary.ok ? null : primaryFailure ? failureLabel(primary.status, primaryFailure) : `HTTP ${primary.status}`,
       phase: opts.meta?.phase ?? null,
       promptChars: opts.meta?.promptChars ?? null,
       hadAttachments: opts.meta?.hadAttachments ?? false,

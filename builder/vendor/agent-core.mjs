@@ -38982,6 +38982,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -60751,10 +60752,10 @@ async function railwayGraphql(token2, query, variables) {
     body: JSON.stringify({ query, variables }),
     signal: AbortSignal.timeout(3e4)
   });
-  const json = await res.json().catch(() => null);
-  if (!res.ok || !json) throw new Error(`Railway API returned ${res.status}`);
-  if (json.errors?.length) throw new Error(json.errors.map((e) => e.message).join("; "));
-  return json.data;
+  const json2 = await res.json().catch(() => null);
+  if (!res.ok || !json2) throw new Error(`Railway API returned ${res.status}`);
+  if (json2.errors?.length) throw new Error(json2.errors.map((e) => e.message).join("; "));
+  return json2.data;
 }
 async function createService(cfg, name, source) {
   const data2 = await railwayGraphql(cfg.token, CREATE_SERVICE, {
@@ -62453,6 +62454,777 @@ var init_model_health_server = __esm({
   }
 });
 
+// src/server/engine/provider-retry.ts
+var provider_retry_exports = {};
+__export(provider_retry_exports, {
+  BASE_DELAY_MS: () => BASE_DELAY_MS,
+  MAX_DELAY_MS: () => MAX_DELAY_MS,
+  MAX_PROVIDER_RETRIES: () => MAX_PROVIDER_RETRIES,
+  RETRYABLE_STATUS: () => RETRYABLE_STATUS,
+  backoffDelay: () => backoffDelay,
+  classifyProviderStatus: () => classifyProviderStatus,
+  withProviderRetry: () => withProviderRetry
+});
+function classifyProviderStatus(status) {
+  if (status === null) return "connection";
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 429) return "rate_limited";
+  if (RETRYABLE_STATUS.has(status)) return "server_error";
+  return "deterministic";
+}
+function backoffDelay(attempt, random = Math.random) {
+  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1));
+  return Math.round(exp / 2 + random() * (exp / 2));
+}
+async function withProviderRetry(run, opts = {}) {
+  const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let last2 = null;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
+    let status = null;
+    try {
+      last2 = await run();
+      status = last2.status;
+      lastErr = null;
+    } catch (e) {
+      if (opts.signal?.aborted) throw e;
+      lastErr = e;
+      last2 = null;
+    }
+    const cls = classifyProviderStatus(status);
+    const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
+    const delayMs = retry ? backoffDelay(attempt, opts.random) : 0;
+    opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
+    if (!retry) break;
+    try {
+      await last2?.body?.cancel();
+    } catch {
+    }
+    await sleep3(delayMs);
+  }
+  if (last2) return last2;
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
+var init_provider_retry = __esm({
+  "src/server/engine/provider-retry.ts"() {
+    init_define_import_meta_env();
+    RETRYABLE_STATUS = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
+    MAX_PROVIDER_RETRIES = 2;
+    BASE_DELAY_MS = 800;
+    MAX_DELAY_MS = 6e3;
+  }
+});
+
+// src/server/developer-keys.ts
+var developer_keys_exports = {};
+__export(developer_keys_exports, {
+  KEY_PREFIX: () => KEY_PREFIX,
+  SCOPES: () => SCOPES,
+  displayPrefix: () => displayPrefix,
+  generateKey: () => generateKey,
+  hasScope: () => hasScope,
+  hashKey: () => hashKey,
+  looksLikeDeveloperKey: () => looksLikeDeveloperKey,
+  normalizeScopes: () => normalizeScopes,
+  requiredScope: () => requiredScope
+});
+function generateKey() {
+  const bytes2 = new Uint8Array(BODY_LEN);
+  crypto.getRandomValues(bytes2);
+  let body = "";
+  for (let i = 0; body.length < BODY_LEN; i++) {
+    if (i >= bytes2.length) {
+      crypto.getRandomValues(bytes2);
+      i = 0;
+    }
+    if (bytes2[i] < 248) body += ALPHABET[bytes2[i] % 62];
+  }
+  return KEY_PREFIX + body;
+}
+function looksLikeDeveloperKey(raw) {
+  return new RegExp(`^${KEY_PREFIX}[A-Za-z0-9]{${BODY_LEN}}$`).test(raw);
+}
+function displayPrefix(key) {
+  return key.slice(0, KEY_PREFIX.length + 4);
+}
+async function hashKey(key) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function requiredScope(method) {
+  const m = method.toUpperCase();
+  return m === "GET" || m === "HEAD" ? "projects:read" : "projects:write";
+}
+function hasScope(granted, needed) {
+  if (granted.includes(needed)) return true;
+  return needed === "projects:read" && granted.includes("projects:write");
+}
+function normalizeScopes(input) {
+  if (input === void 0) return ["projects:read", "projects:write"];
+  if (!Array.isArray(input) || input.length === 0) return null;
+  const out = /* @__PURE__ */ new Set();
+  for (const s of input) {
+    if (!SCOPES.includes(s)) return null;
+    out.add(s);
+  }
+  return [...out];
+}
+var KEY_PREFIX, BODY_LEN, ALPHABET, SCOPES;
+var init_developer_keys = __esm({
+  "src/server/developer-keys.ts"() {
+    init_define_import_meta_env();
+    KEY_PREFIX = "sk_custard_";
+    BODY_LEN = 40;
+    ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    SCOPES = ["projects:read", "projects:write"];
+  }
+});
+
+// src/server/webhook-outbox.ts
+var webhook_outbox_exports = {};
+__export(webhook_outbox_exports, {
+  RETRY_DELAYS_MS: () => RETRY_DELAYS_MS,
+  isRetryableStatus: () => isRetryableStatus,
+  nextRetryDelayMs: () => nextRetryDelayMs
+});
+function nextRetryDelayMs(attempts) {
+  if (attempts < 0) return RETRY_DELAYS_MS[0];
+  return attempts < RETRY_DELAYS_MS.length ? RETRY_DELAYS_MS[attempts] : null;
+}
+function isRetryableStatus(status) {
+  return status === null || status === 408 || status === 429 || status >= 500;
+}
+var RETRY_DELAYS_MS;
+var init_webhook_outbox = __esm({
+  "src/server/webhook-outbox.ts"() {
+    init_define_import_meta_env();
+    RETRY_DELAYS_MS = [6e4, 3e5, 9e5, 36e5, 108e5, 216e5];
+  }
+});
+
+// src/server/service-api.server.ts
+var service_api_server_exports = {};
+__export(service_api_server_exports, {
+  CORS_HEADERS: () => CORS_HEADERS,
+  SERVICE_ACCOUNT_EMAIL: () => SERVICE_ACCOUNT_EMAIL,
+  asServiceResponse: () => asServiceResponse,
+  callerCanAccessProject: () => callerCanAccessProject,
+  callerOf: () => callerOf,
+  deliverWebhook: () => deliverWebhook,
+  drainWebhookOutbox: () => drainWebhookOutbox,
+  followBuild: () => followBuild,
+  getProjectBuild: () => getProjectBuild,
+  isAllowedWebhookUrl: () => isAllowedWebhookUrl,
+  json: () => json,
+  linkProjectToCaller: () => linkProjectToCaller,
+  listProjectBuilds: () => listProjectBuilds,
+  loadOwnedProject: () => loadOwnedProject,
+  loadProjectFiles: () => loadProjectFiles,
+  preflight: () => preflight,
+  previewFields: () => previewFields,
+  previewUrlFor: () => previewUrlFor,
+  requireServiceCaller: () => requireServiceCaller,
+  serviceAccessToken: () => serviceAccessToken,
+  serviceKey: () => serviceKey,
+  serviceUserId: () => serviceUserId,
+  tailTurnEvents: () => tailTurnEvents,
+  toPublicBuild: () => toPublicBuild,
+  triggerProjectBuild: () => triggerProjectBuild,
+  verifyApiCaller: () => verifyApiCaller,
+  verifyServiceKey: () => verifyServiceKey
+});
+function serviceKey() {
+  return process.env.PETAL_API_KEY || process.env.CUSTARD_API_KEY || "";
+}
+async function previewUrlFor(projectId, turnId) {
+  const sb = await admin2();
+  const pick2 = async (byTurn) => {
+    let q = sb.from("project_builds").select("dist_path").eq("project_id", projectId).eq("status", "ready");
+    if (byTurn && turnId) q = q.eq("turn_id", turnId);
+    const { data: data2 } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const url = data2?.dist_path ?? null;
+    return url && /^https:\/\//.test(url) ? url : null;
+  };
+  return (turnId ? await pick2(true) : null) ?? await pick2(false);
+}
+function previewFields(url) {
+  return { previewUrl: url, preview_url: url, publishedUrl: url };
+}
+function json(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS }
+  });
+}
+function preflight() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+function timingSafeEqualStr(a2, b) {
+  const enc2 = new TextEncoder();
+  const x = enc2.encode(a2);
+  const y = enc2.encode(b);
+  let diff = x.length ^ y.length;
+  const n = Math.max(x.length, y.length);
+  for (let i = 0; i < n; i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+function verifyServiceKey(request) {
+  const expected = serviceKey();
+  if (!expected || expected.length < 16) {
+    return json({ error: "service_key_not_configured" }, 500);
+  }
+  const auth = request.headers.get("authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+  if (!timingSafeEqualStr(auth.slice(7), expected)) return json({ error: "unauthorized" }, 401);
+  return null;
+}
+function callerOf(request) {
+  return callers.get(request) ?? null;
+}
+async function verifyApiCaller(request) {
+  const auth = request.headers.get("authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+  const presented = auth.slice(7).trim();
+  const { looksLikeDeveloperKey: looksLikeDeveloperKey2, hashKey: hashKey2, hasScope: hasScope2, requiredScope: requiredScope2 } = await Promise.resolve().then(() => (init_developer_keys(), developer_keys_exports));
+  if (looksLikeDeveloperKey2(presented)) {
+    const sb = await admin2();
+    const { data: data2 } = await sb.from("developer_api_keys").select("id, scopes, revoked_at").eq("key_hash", await hashKey2(presented)).maybeSingle();
+    if (!data2 || data2.revoked_at) return json({ error: "unauthorized" }, 401);
+    if (!hasScope2(data2.scopes ?? [], requiredScope2(request.method))) {
+      return json({ error: "insufficient_scope", needed: requiredScope2(request.method) }, 403);
+    }
+    callers.set(request, { kind: "developer", keyId: data2.id, scopes: data2.scopes ?? [] });
+    void sb.from("developer_api_keys").update({ last_used_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", data2.id).then(
+      () => void 0,
+      () => void 0
+    );
+    return null;
+  }
+  const denied = verifyServiceKey(request);
+  if (denied) return denied;
+  callers.set(request, { kind: "service" });
+  return null;
+}
+function requireServiceCaller(request) {
+  return callerOf(request)?.kind === "service" ? null : json({ error: "forbidden" }, 403);
+}
+async function callerCanAccessProject(request, projectId) {
+  const caller = callerOf(request);
+  if (!caller) return false;
+  if (caller.kind === "service") return true;
+  const sb = await admin2();
+  const { data: data2 } = await sb.from("developer_key_projects").select("project_id").eq("key_id", caller.keyId).eq("project_id", projectId).maybeSingle();
+  return !!data2;
+}
+async function linkProjectToCaller(request, projectId) {
+  const caller = callerOf(request);
+  if (caller?.kind !== "developer") return;
+  const sb = await admin2();
+  const { error } = await sb.from("developer_key_projects").insert({ key_id: caller.keyId, project_id: projectId });
+  if (error) throw new Error(`could not link project to key: ${error.message}`);
+}
+async function admin2() {
+  const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+  return supabaseAdmin2;
+}
+async function serviceUserId() {
+  if (cachedUserId) return cachedUserId;
+  const sb = await admin2();
+  const configured = process.env.CUSTARD_SERVICE_USER_ID;
+  if (configured) {
+    cachedUserId = configured;
+    return cachedUserId;
+  }
+  const created = await sb.auth.admin.createUser({
+    email: SERVICE_ACCOUNT_EMAIL,
+    email_confirm: true,
+    user_metadata: { service_account: true }
+  });
+  if (created.data.user) {
+    cachedUserId = created.data.user.id;
+    return cachedUserId;
+  }
+  const { data: list4 } = await sb.auth.admin.listUsers({ page: 1, perPage: 1e3 });
+  const found = list4?.users.find((u) => u.email === SERVICE_ACCOUNT_EMAIL);
+  if (!found) throw new Error(`service account unavailable: ${created.error?.message ?? "unknown"}`);
+  cachedUserId = found.id;
+  return cachedUserId;
+}
+async function serviceAccessToken() {
+  const now = Date.now() / 1e3;
+  if (cachedSession && cachedSession.expiresAt - now > 120) return cachedSession.token;
+  await serviceUserId();
+  const sb = await admin2();
+  const link = await sb.auth.admin.generateLink({ type: "magiclink", email: SERVICE_ACCOUNT_EMAIL });
+  const hash2 = link.data?.properties?.hashed_token;
+  if (!hash2) throw new Error(`could not mint service session: ${link.error?.message ?? "no token"}`);
+  const anon = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+  const { data: data2, error } = await anon.auth.verifyOtp({ token_hash: hash2, type: "magiclink" });
+  if (error || !data2.session) throw new Error(`could not mint service session: ${error?.message ?? "no session"}`);
+  cachedSession = { token: data2.session.access_token, expiresAt: data2.session.expires_at ?? now + 3e3 };
+  return cachedSession.token;
+}
+async function loadOwnedProject(projectId, request) {
+  if (request && !await callerCanAccessProject(request, projectId)) return null;
+  const sb = await admin2();
+  const owner = await serviceUserId();
+  const { data: data2 } = await sb.from("projects").select("id, title, revision, owner_id, created_at, updated_at").eq("id", projectId).maybeSingle();
+  if (!data2 || data2.owner_id !== owner) return null;
+  return data2;
+}
+async function loadProjectFiles(projectId) {
+  const sb = await admin2();
+  const { data: data2 } = await sb.from("project_files").select("path, content").eq("project_id", projectId).order("path");
+  return data2 ?? [];
+}
+async function hmacHex(secret, body) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function isAllowedWebhookUrl(raw) {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return false;
+    const h = u.hostname.toLowerCase();
+    if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return false;
+    if (/^(10|127|0)\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h)) return false;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(h) || h.startsWith("[")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function postSigned(url, body, event, deliveryId) {
+  const sig = await hmacHex(serviceKey(), body);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Petal-Signature": `sha256=${sig}`,
+        "X-Petal-Event": event,
+        // Stable across retries so the receiver can ignore duplicates.
+        "X-Petal-Delivery": deliveryId
+      },
+      body,
+      signal: AbortSignal.timeout(1e4)
+    });
+    return res.status;
+  } catch {
+    return null;
+  }
+}
+async function deliverWebhook(url, payload) {
+  const { isRetryableStatus: isRetryableStatus2, nextRetryDelayMs: nextRetryDelayMs2 } = await Promise.resolve().then(() => (init_webhook_outbox(), webhook_outbox_exports));
+  const body = JSON.stringify(payload);
+  const event = String(payload?.event ?? "");
+  const deliveryId = crypto.randomUUID();
+  let status = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    status = await postSigned(url, body, event, deliveryId);
+    if (status !== null && !isRetryableStatus2(status)) return;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+  }
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { error } = await supabaseAdmin2.from("webhook_deliveries").insert({
+      id: deliveryId,
+      url,
+      event,
+      body,
+      attempts: 0,
+      last_status: status,
+      next_retry_at: new Date(Date.now() + (nextRetryDelayMs2(0) ?? 6e4)).toISOString()
+    });
+    if (error) throw error;
+    console.warn("[service-api] webhook queued for retry", new URL(url).host, event);
+  } catch (e) {
+    console.error("[service-api] webhook delivery lost", new URL(url).host, e instanceof Error ? e.message : String(e));
+  }
+}
+async function drainWebhookOutbox(limit = 20) {
+  const { isRetryableStatus: isRetryableStatus2, nextRetryDelayMs: nextRetryDelayMs2 } = await Promise.resolve().then(() => (init_webhook_outbox(), webhook_outbox_exports));
+  const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+  const { data: data2 } = await supabaseAdmin2.from("webhook_deliveries").select("id, url, event, body, attempts").eq("status", "pending").lte("next_retry_at", (/* @__PURE__ */ new Date()).toISOString()).order("next_retry_at").limit(limit);
+  const out = { delivered: 0, retrying: 0, dead: 0 };
+  for (const row of data2 ?? []) {
+    const attempts = row.attempts + 1;
+    const { data: claimed } = await supabaseAdmin2.from("webhook_deliveries").update({ attempts, next_retry_at: new Date(Date.now() + 6e5).toISOString() }).eq("id", row.id).eq("attempts", row.attempts).eq("status", "pending").select("id");
+    if (!claimed?.length) continue;
+    const status = await postSigned(row.url, row.body, row.event, row.id);
+    if (status !== null && !isRetryableStatus2(status)) {
+      const ok = status >= 200 && status < 300;
+      await supabaseAdmin2.from("webhook_deliveries").update({ status: ok ? "delivered" : "rejected", last_status: status, delivered_at: ok ? (/* @__PURE__ */ new Date()).toISOString() : null }).eq("id", row.id);
+      if (ok) out.delivered++;
+      else out.dead++;
+      continue;
+    }
+    const delay = nextRetryDelayMs2(attempts);
+    await supabaseAdmin2.from("webhook_deliveries").update(
+      delay === null ? { status: "dead", last_status: status } : { last_status: status, next_retry_at: new Date(Date.now() + delay).toISOString() }
+    ).eq("id", row.id);
+    if (delay === null) out.dead++;
+    else out.retrying++;
+  }
+  return out;
+}
+function toPublicBuild(row) {
+  const ready = row.status === "ready";
+  const url = ready && row.dist_path && /^https:\/\//.test(row.dist_path) ? row.dist_path : null;
+  return {
+    buildId: row.id,
+    status: ["pending", "building", "ready", "failed"].includes(row.status) ? row.status : "pending",
+    revision: row.project_revision == null ? null : Number(row.project_revision),
+    turnId: row.turn_id,
+    deploymentUrl: url,
+    progress: row.progress_label,
+    error: row.status === "failed" ? row.error_message : null,
+    createdAt: row.created_at,
+    readyAt: row.ready_at
+  };
+}
+async function listProjectBuilds(projectId, limit = 10) {
+  const sb = await admin2();
+  const { data: data2 } = await sb.from("project_builds").select(BUILD_COLUMNS).eq("project_id", projectId).order("created_at", { ascending: false }).limit(limit);
+  return (data2 ?? []).map(toPublicBuild);
+}
+async function getProjectBuild(projectId, buildId) {
+  const sb = await admin2();
+  const { data: data2 } = await sb.from("project_builds").select(BUILD_COLUMNS).eq("project_id", projectId).eq("id", buildId).maybeSingle();
+  return data2 ? toPublicBuild(data2) : null;
+}
+async function triggerProjectBuild(selfOrigin, projectId, opts = {}) {
+  const secret = process.env.BUILDER_SHARED_SECRET;
+  if (!secret) return { ok: false, status: 500, error: "builder_not_configured" };
+  const userId = await serviceUserId();
+  const res = await fetch(new URL("/api/builds/trigger", selfOrigin), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": userId },
+    body: JSON.stringify({
+      projectId,
+      ...opts.turnId ? { turnId: opts.turnId } : {},
+      ...opts.revision != null ? { revision: Number(opts.revision) } : {},
+      ...opts.reship ? { reship: true } : {}
+    })
+  }).catch((e) => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }));
+  const out = await res.json().catch(() => null);
+  if (!res.ok) return { ok: false, status: res.status, error: out?.error ?? `trigger_failed_${res.status}` };
+  if (out?.status === "failed") return { ok: false, status: 502, error: out.error ?? "build_service_unreachable" };
+  return { ok: true, buildId: out?.buildId ?? null, status: out?.status ?? "pending", superseded: out?.superseded, reused: out?.reused };
+}
+async function* followBuild(projectId, buildId, maxMs = 20 * 6e4) {
+  const started = Date.now();
+  let last2 = "";
+  while (Date.now() - started < maxMs) {
+    const b = await getProjectBuild(projectId, buildId);
+    if (!b) return;
+    const key = `${b.status}|${b.progress ?? ""}`;
+    if (key !== last2) {
+      last2 = key;
+      yield b;
+    }
+    if (b.status === "ready" || b.status === "failed") return;
+    await new Promise((r) => setTimeout(r, 3e3));
+  }
+}
+async function* tailTurnEvents(turnId, afterSeq = 0, maxMs = 25 * 6e4) {
+  const sb = await admin2();
+  const started = Date.now();
+  let seq2 = afterSeq;
+  while (Date.now() - started < maxMs) {
+    const { data: events } = await sb.from("turn_events").select("seq,kind,payload").eq("turn_id", turnId).gt("seq", seq2).order("seq", { ascending: true }).limit(500);
+    for (const e of events ?? []) {
+      seq2 = e.seq;
+      const payload = e.payload && typeof e.payload === "object" ? e.payload : {};
+      yield { kind: e.kind, payload, seq: e.seq };
+      if (e.kind === "done") return;
+    }
+    if (!events?.length) {
+      const { data: turn } = await sb.from("turns").select("status").eq("id", turnId).maybeSingle();
+      if (!turn || TERMINAL.has(turn.status)) {
+        yield { kind: "done", payload: { status: turn?.status ?? "unknown" }, seq: seq2 };
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  yield { kind: "timeout", payload: { message: "stream window ended; reconnect with after=<seq>" }, seq: seq2 };
+}
+async function asServiceResponse(res) {
+  const text = await res.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = res.ok ? { ok: true, message: text } : { error: text || "request_failed" };
+  }
+  if (!res.ok && (typeof body !== "object" || body === null || !("error" in body))) {
+    body = { error: body };
+  }
+  return json(body, res.status);
+}
+var SERVICE_ACCOUNT_EMAIL, CORS_HEADERS, callers, cachedUserId, cachedSession, BUILD_COLUMNS, TERMINAL;
+var init_service_api_server = __esm({
+  "src/server/service-api.server.ts"() {
+    init_define_import_meta_env();
+    init_dist4();
+    SERVICE_ACCOUNT_EMAIL = "service@custardai.dev";
+    CORS_HEADERS = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type"
+    };
+    callers = /* @__PURE__ */ new WeakMap();
+    cachedUserId = null;
+    cachedSession = null;
+    BUILD_COLUMNS = "id,status,project_revision,turn_id,dist_path,deployed,progress_label,error_message,created_at,ready_at";
+    TERMINAL = /* @__PURE__ */ new Set(["succeeded", "failed", "aborted", "awaiting_credits"]);
+  }
+});
+
+// src/server/balance-alert.server.ts
+var balance_alert_server_exports = {};
+__export(balance_alert_server_exports, {
+  BALANCE_CHECK_INTERVAL_MS: () => BALANCE_CHECK_INTERVAL_MS,
+  PARTNER_ALERT_RECIPIENT: () => PARTNER_ALERT_RECIPIENT,
+  PARTNER_LOW_BALANCE_CREDITS: () => PARTNER_LOW_BALANCE_CREDITS,
+  alertDecision: () => alertDecision,
+  checkIsDue: () => checkIsDue,
+  checkPartnerBalance: () => checkPartnerBalance,
+  emailAdmins: () => emailAdmins
+});
+function checkIsDue(lastCheckedAt, now = Date.now()) {
+  if (!lastCheckedAt) return true;
+  const last2 = Date.parse(lastCheckedAt);
+  return !Number.isFinite(last2) || now - last2 >= BALANCE_CHECK_INTERVAL_MS;
+}
+function alertDecision(balance, threshold, alertedAt) {
+  if (balance < threshold) return alertedAt ? "none" : "send";
+  return alertedAt ? "rearm" : "none";
+}
+function fmt(n) {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+async function emailAdmins(origin, name, balance, threshold, key) {
+  const to = [PARTNER_ALERT_RECIPIENT];
+  const secret = process.env.BUILDER_SHARED_SECRET;
+  if (!secret) return "BUILDER_SHARED_SECRET not configured";
+  const errors = [];
+  for (const [i, recipientEmail] of to.entries()) {
+    const res = await fetch(new URL("/lovable/email/transactional/send", origin).toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret },
+      body: JSON.stringify({
+        templateName: "partner-low-balance",
+        recipientEmail,
+        idempotencyKey: `${key}-${i}`,
+        templateData: { partnerName: name, balance: fmt(balance), threshold: fmt(threshold) }
+      })
+    }).catch((e) => new Response(String(e), { status: 599 }));
+    if (!res.ok) errors.push(`send ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`);
+  }
+  return errors.length === to.length ? errors.join("; ") : null;
+}
+async function checkPartnerBalance(origin) {
+  const { serviceUserId: serviceUserId2 } = await Promise.resolve().then(() => (init_service_api_server(), service_api_server_exports));
+  const userId = await serviceUserId2();
+  if (!userId) return { balance: null, decision: "skipped", emailed: false, error: "no partner account" };
+  const threshold = PARTNER_LOW_BALANCE_CREDITS;
+  const { data: state } = await supabaseAdmin.from("balance_alerts").select("alerted_at, updated_at").eq("user_id", userId).maybeSingle();
+  if (!checkIsDue(state?.updated_at ?? null)) {
+    return { balance: null, decision: "skipped", emailed: false, error: null };
+  }
+  const { data: bal, error: balErr } = await supabaseAdmin.rpc("available_credits", { _user_id: userId });
+  if (balErr || bal == null) return { balance: null, decision: "skipped", emailed: false, error: balErr?.message ?? "no balance" };
+  const balance = Number(bal);
+  const decision = alertDecision(balance, threshold, state?.alerted_at ?? null);
+  let emailed = false;
+  let error = null;
+  let alertedAt = state?.alerted_at ?? null;
+  if (decision === "send") {
+    error = await emailAdmins(origin, "Custard AI", balance, threshold, `partner-low-balance-${userId}-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 13)}`);
+    if (!error) {
+      emailed = true;
+      alertedAt = (/* @__PURE__ */ new Date()).toISOString();
+    }
+  } else if (decision === "rearm") {
+    alertedAt = null;
+  }
+  await supabaseAdmin.from("balance_alerts").upsert(
+    { user_id: userId, threshold, alerted_at: alertedAt, last_balance: balance, updated_at: (/* @__PURE__ */ new Date()).toISOString() },
+    { onConflict: "user_id" }
+  );
+  return { balance, decision, emailed, error };
+}
+var PARTNER_LOW_BALANCE_CREDITS, PARTNER_ALERT_RECIPIENT, BALANCE_CHECK_INTERVAL_MS;
+var init_balance_alert_server = __esm({
+  "src/server/balance-alert.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+    PARTNER_LOW_BALANCE_CREDITS = 1e3;
+    PARTNER_ALERT_RECIPIENT = "ikemadu26@gmail.com";
+    BALANCE_CHECK_INTERVAL_MS = 60 * 60 * 1e3;
+  }
+});
+
+// src/server/ai-gateway-health.server.ts
+var ai_gateway_health_server_exports = {};
+__export(ai_gateway_health_server_exports, {
+  DOWN_CANARY_INTERVAL_MS: () => DOWN_CANARY_INTERVAL_MS,
+  GATEWAY_ALERT_ID: () => GATEWAY_ALERT_ID,
+  RECENT_WINDOW_MS: () => RECENT_WINDOW_MS,
+  checkGatewayHealth: () => checkGatewayHealth,
+  classifyGatewayFailure: () => classifyGatewayFailure,
+  failureLabel: () => failureLabel,
+  gatewayAlertAction: () => gatewayAlertAction,
+  readFailure: () => readFailure,
+  runCanary: () => runCanary,
+  verdictFrom: () => verdictFrom
+});
+function classifyGatewayFailure(status, bodyText) {
+  const text = (bodyText || "").slice(0, 2e3);
+  let type = "";
+  let message = "";
+  try {
+    const j = JSON.parse(text);
+    const e = typeof j.error === "object" && j.error ? j.error : null;
+    type = String(e?.type ?? e?.code ?? j.type ?? "");
+    message = String(e?.message ?? (typeof j.error === "string" ? j.error : "") ?? j.message ?? "");
+    if (!message && j.message) message = String(j.message);
+  } catch {
+    message = text;
+  }
+  const hay = `${type} ${message}`.toLowerCase();
+  const reason = (message || type || `HTTP ${status}`).replace(/\s+/g, " ").trim().slice(0, 200);
+  if (/not[_ ]registered/.test(hay)) return { kind: "key_not_registered", reason, needsOperator: true };
+  if (status === 401) return { kind: "key_missing_or_invalid", reason, needsOperator: true };
+  if (status === 402) return { kind: "credits", reason, needsOperator: true };
+  if (status === 403 && /credit_limit|limit_reached|ai.*disabled/.test(hay)) return { kind: "workspace_limit", reason, needsOperator: true };
+  if (status === 403) return { kind: "provider_denied", reason, needsOperator: true };
+  if (status === 429) return { kind: "rate_limited", reason, needsOperator: false };
+  if (status >= 500) return { kind: "unavailable", reason, needsOperator: false };
+  if (status === 400) return { kind: "bad_request", reason, needsOperator: false };
+  return { kind: "other", reason, needsOperator: false };
+}
+function failureLabel(status, f) {
+  return `HTTP ${status} ${f.kind}: ${f.reason}`.slice(0, 300);
+}
+async function readFailure(res) {
+  if (res.ok) return null;
+  let text = "";
+  try {
+    text = await res.clone().text();
+  } catch {
+  }
+  return classifyGatewayFailure(res.status, text);
+}
+function verdictFrom(samples) {
+  const newest = samples[0];
+  if (!newest) return { state: "unknown", kind: null, reason: null };
+  if (newest.status >= 200 && newest.status < 300) return { state: "ok", kind: null, reason: null };
+  const m = /^HTTP \d+ ([a-z_]+): (.*)$/.exec(newest.error_message ?? "");
+  const kind = m?.[1] ?? (newest.status === 401 ? "key_missing_or_invalid" : newest.status === 403 ? "provider_denied" : null);
+  const operator = kind === "key_not_registered" || kind === "key_missing_or_invalid" || kind === "credits" || kind === "workspace_limit" || kind === "provider_denied";
+  if (!operator) return { state: "unknown", kind, reason: m?.[2] ?? newest.error_message };
+  return { state: "down", kind, reason: m?.[2] ?? newest.error_message };
+}
+function gatewayAlertAction(state, alertedAt) {
+  if (state === "down") return alertedAt ? "none" : "send";
+  if (state === "ok") return alertedAt ? "rearm" : "none";
+  return "none";
+}
+async function recentSamples() {
+  const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+  const since = new Date(Date.now() - RECENT_WINDOW_MS).toISOString();
+  const { data: data2 } = await supabaseAdmin2.from("ai_call_log").select("status, error_message, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(20);
+  return data2 ?? [];
+}
+async function runCanary() {
+  const { aiChatCompletions: aiChatCompletions2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
+  const res = await aiChatCompletions2({
+    feature: "triage",
+    noFallback: true,
+    body: { messages: [{ role: "user", content: "Reply with: ok" }], max_tokens: 4 },
+    meta: { phase: "gateway_canary", chosenBy: "gateway_canary" }
+  });
+  const failure = await readFailure(res);
+  try {
+    await res.text();
+  } catch {
+  }
+  return { status: res.status, failure };
+}
+async function checkGatewayHealth(origin) {
+  const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+  const { data: alertRow } = await supabaseAdmin2.from("balance_alerts").select("alerted_at, updated_at").eq("user_id", GATEWAY_ALERT_ID).maybeSingle();
+  const alertedAt = alertRow?.alerted_at ?? null;
+  let verdict = verdictFrom(await recentSamples());
+  let canary = false;
+  const lastCanaryAt = alertRow?.updated_at ? Date.parse(alertRow.updated_at) : 0;
+  const mayCanary = !alertedAt || Date.now() - lastCanaryAt >= DOWN_CANARY_INTERVAL_MS;
+  if (verdict.state === "unknown" && mayCanary) {
+    canary = true;
+    const r = await runCanary();
+    verdict = r.failure ? verdictFrom([{ status: r.status, error_message: failureLabel(r.status, r.failure), created_at: (/* @__PURE__ */ new Date()).toISOString() }]) : { state: "ok", kind: null, reason: null };
+  }
+  const action = gatewayAlertAction(verdict.state, alertedAt);
+  let emailed = false;
+  let error = null;
+  let nextAlertedAt = alertedAt;
+  if (action === "send") {
+    error = await emailOwner(origin, verdict);
+    if (!error) {
+      emailed = true;
+      nextAlertedAt = (/* @__PURE__ */ new Date()).toISOString();
+    }
+  } else if (action === "rearm") {
+    nextAlertedAt = null;
+  }
+  if (action !== "none" || canary) {
+    await supabaseAdmin2.from("balance_alerts").upsert(
+      { user_id: GATEWAY_ALERT_ID, threshold: 0, alerted_at: nextAlertedAt, last_balance: null, updated_at: (/* @__PURE__ */ new Date()).toISOString() },
+      { onConflict: "user_id" }
+    );
+  }
+  return { ...verdict, canary, emailed, error };
+}
+async function emailOwner(origin, v) {
+  const secret = process.env.BUILDER_SHARED_SECRET;
+  if (!secret) return "BUILDER_SHARED_SECRET not configured";
+  const { PARTNER_ALERT_RECIPIENT: PARTNER_ALERT_RECIPIENT2 } = await Promise.resolve().then(() => (init_balance_alert_server(), balance_alert_server_exports));
+  const res = await fetch(new URL("/lovable/email/transactional/send", origin).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret },
+    body: JSON.stringify({
+      templateName: "ai-gateway-down",
+      recipientEmail: PARTNER_ALERT_RECIPIENT2,
+      idempotencyKey: `ai-gateway-down-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 13)}`,
+      templateData: { kind: v.kind ?? "unknown", reason: v.reason ?? "" }
+    })
+  }).catch((e) => new Response(String(e), { status: 599 }));
+  if (!res.ok) return `send ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`;
+  return null;
+}
+var GATEWAY_ALERT_ID, RECENT_WINDOW_MS, DOWN_CANARY_INTERVAL_MS;
+var init_ai_gateway_health_server = __esm({
+  "src/server/ai-gateway-health.server.ts"() {
+    init_define_import_meta_env();
+    GATEWAY_ALERT_ID = "00000000-0000-0000-0000-00000000a1a1";
+    RECENT_WINDOW_MS = 10 * 60 * 1e3;
+    DOWN_CANARY_INTERVAL_MS = 60 * 60 * 1e3;
+  }
+});
+
 // src/server/ai-provider.server.ts
 var ai_provider_server_exports = {};
 __export(ai_provider_server_exports, {
@@ -62673,10 +63445,10 @@ async function usageFromResponse(resp, body) {
   if (body.stream === true) return null;
   if (!resp.ok) return null;
   try {
-    const json = JSON.parse(await resp.clone().text());
-    const u = parseUsageObject(json?.usage);
+    const json2 = JSON.parse(await resp.clone().text());
+    const u = parseUsageObject(json2?.usage);
     if (!u) return null;
-    return { ...u, requestId: json.id ?? null, upstream: json.provider ?? null };
+    return { ...u, requestId: json2.id ?? null, upstream: json2.provider ?? null };
   } catch {
     return null;
   }
@@ -63077,7 +63849,16 @@ async function aiChatCompletions(opts) {
     console.warn(`[provider-policy] providers_exhausted (empty allow-list) \u2014 not sent`);
     return providersExhaustedResponse();
   }
-  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
+  let primary = await withProviderRetry2(
+    () => dispatch(provider, body, opts.signal, opts.timeoutTier),
+    { signal: opts.signal }
+  );
+  const { readFailure: readFailure2, failureLabel: failureLabel2 } = await Promise.resolve().then(() => (init_ai_gateway_health_server(), ai_gateway_health_server_exports));
+  const primaryFailure = await readFailure2(primary);
+  if (primaryFailure?.needsOperator) {
+    console.error(`[ai-gateway] ${failureLabel2(primary.status, primaryFailure)}`);
+  }
   const exhausted = isCodeWriting && !primary.ok && primary.status === 404;
   if (exhausted) {
     try {
@@ -63103,7 +63884,7 @@ async function aiChatCompletions(opts) {
       status: primary.status,
       latencyMs: latency,
       fallbackUsed: false,
-      errorMessage: primary.ok ? null : `HTTP ${primary.status}`,
+      errorMessage: primary.ok ? null : primaryFailure ? failureLabel2(primary.status, primaryFailure) : `HTTP ${primary.status}`,
       phase: opts.meta?.phase ?? null,
       promptChars: opts.meta?.promptChars ?? null,
       hadAttachments: opts.meta?.hadAttachments ?? false,
@@ -65301,8 +66082,8 @@ var init_ZodError = __esm({
       "not_finite"
     ]);
     quotelessJson = (obj) => {
-      const json = JSON.stringify(obj, null, 2);
-      return json.replace(/"([^"]+)":/g, "$1:");
+      const json2 = JSON.stringify(obj, null, 2);
+      return json2.replace(/"([^"]+)":/g, "$1:");
     };
     ZodError = class _ZodError extends Error {
       get errors() {
@@ -69507,6 +70288,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -95968,9 +96750,9 @@ function anchoredWindows(content, opts) {
   }
   return out.join("\n");
 }
-function readErrorFrame(json) {
-  if (!json || typeof json !== "object") return null;
-  const err = json.error;
+function readErrorFrame(json2) {
+  if (!json2 || typeof json2 !== "object") return null;
+  const err = json2.error;
   if (!err) return null;
   if (typeof err === "string") return classifyProviderError(err, null);
   if (typeof err === "object") {
@@ -140066,7 +140848,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141154,7 +141935,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141319,7 +142099,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141363,7 +142142,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141585,7 +142363,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143914,7 +144691,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144411,8 +145187,8 @@ ${JSON.stringify(
       }
     });
     if (!res.ok) return fallback;
-    const json = await res.json();
-    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await res.json();
+    const args = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) return fallback;
     const raw = JSON.parse(args);
     const platforms = strings(raw.platforms, 3).filter(
@@ -144706,8 +145482,8 @@ ${JSON.stringify(
       }
     });
     if (!res.ok) return prior;
-    const json = await res.json();
-    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await res.json();
+    const args = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) return prior;
     return mergePrd(prior, JSON.parse(args));
   } catch {
@@ -145119,7 +145895,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146250,7 +147025,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -147979,14 +148753,14 @@ async function runModelAgent(spec, ctx, signal) {
       }
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    const text = json.choices?.[0]?.message?.content ?? "";
+    const json2 = await res.json();
+    const text = json2.choices?.[0]?.message?.content ?? "";
     const parsed = parseAgentOutput(text, KIND_BY_AGENT[spec.name] ?? "product");
     if (!parsed.decisions?.length && !parsed.objections?.length) return null;
     parsed.usage = {
       costMicroUsd: spec.budgetMicroUsd,
-      tokensIn: json.usage?.prompt_tokens ?? 0,
-      tokensOut: json.usage?.completion_tokens ?? 0
+      tokensIn: json2.usage?.prompt_tokens ?? 0,
+      tokensOut: json2.usage?.completion_tokens ?? 0
     };
     return parsed;
   } catch {
@@ -154818,68 +155592,6 @@ var init_work_unit = __esm({
   }
 });
 
-// src/server/engine/provider-retry.ts
-var provider_retry_exports = {};
-__export(provider_retry_exports, {
-  BASE_DELAY_MS: () => BASE_DELAY_MS,
-  MAX_DELAY_MS: () => MAX_DELAY_MS,
-  MAX_PROVIDER_RETRIES: () => MAX_PROVIDER_RETRIES,
-  RETRYABLE_STATUS: () => RETRYABLE_STATUS,
-  backoffDelay: () => backoffDelay,
-  classifyProviderStatus: () => classifyProviderStatus,
-  withProviderRetry: () => withProviderRetry
-});
-function classifyProviderStatus(status) {
-  if (status === null) return "connection";
-  if (status >= 200 && status < 300) return "ok";
-  if (status === 429) return "rate_limited";
-  if (RETRYABLE_STATUS.has(status)) return "server_error";
-  return "deterministic";
-}
-function backoffDelay(attempt, random = Math.random) {
-  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1));
-  return Math.round(exp / 2 + random() * (exp / 2));
-}
-async function withProviderRetry(run, opts = {}) {
-  const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  let last2 = null;
-  let lastErr = null;
-  for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
-    let status = null;
-    try {
-      last2 = await run();
-      status = last2.status;
-      lastErr = null;
-    } catch (e) {
-      if (opts.signal?.aborted) throw e;
-      lastErr = e;
-      last2 = null;
-    }
-    const cls = classifyProviderStatus(status);
-    const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
-    const delayMs = retry ? backoffDelay(attempt, opts.random) : 0;
-    opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
-    if (!retry) break;
-    try {
-      await last2?.body?.cancel();
-    } catch {
-    }
-    await sleep3(delayMs);
-  }
-  if (last2) return last2;
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
-}
-var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
-var init_provider_retry = __esm({
-  "src/server/engine/provider-retry.ts"() {
-    init_define_import_meta_env();
-    RETRYABLE_STATUS = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
-    MAX_PROVIDER_RETRIES = 2;
-    BASE_DELAY_MS = 800;
-    MAX_DELAY_MS = 6e3;
-  }
-});
-
 // src/server/verification/structure.ts
 function headerBlocks(src2) {
   return src2.match(/<header\b[\s\S]*?<\/header>/gi) ?? [];
@@ -155886,8 +156598,8 @@ ${f.content}`).join("\n\n")}`
       }
     });
     if (!res.ok) return idle;
-    const json = await res.json();
-    const rawArgs = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await res.json();
+    const rawArgs = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!rawArgs) return idle;
     const parsed = JSON.parse(rawArgs);
     const allowed = new Set(candidates.map((f) => f.path));
@@ -162484,8 +163196,8 @@ async function tryAiSynth(slug3, displayName) {
       meta: { chosenBy: "doc_resolver" }
     });
     if (!r.ok) return null;
-    const json = await r.json();
-    const txt = json.choices?.[0]?.message?.content?.trim() ?? "";
+    const json2 = await r.json();
+    const txt = json2.choices?.[0]?.message?.content?.trim() ?? "";
     const parsed = safeJson(txt);
     if (!parsed) return null;
     const brief = String(parsed.brief ?? "").slice(0, 4e3);
@@ -162673,8 +163385,8 @@ ${input.combined}
       meta: { chosenBy: "user_paste_resolver" }
     });
     if (!r.ok) return null;
-    const json = await r.json();
-    const txt = json.choices?.[0]?.message?.content?.trim() ?? "";
+    const json2 = await r.json();
+    const txt = json2.choices?.[0]?.message?.content?.trim() ?? "";
     return safeJson2(txt);
   } catch {
     return null;
@@ -163774,7 +164486,7 @@ var BUCKET = "petal-images";
 var MAX_IMAGES_PER_GENERATION = 40;
 var IMAGE_CONCURRENCY = 3;
 var MAX_ATTEMPTS = 3;
-var RETRY_DELAYS_MS = [1500, 4e3];
+var RETRY_DELAYS_MS2 = [1500, 4e3];
 var PENDING_MARK = "petal-pending:";
 var PENDING_RE = /data:image\/svg\+xml,[^"'`\s)]*?%3Cdesc%3Epetal-pending%3A([^%]+(?:%[0-9A-F]{2}[^%]*)*?)%3C%2Fdesc%3E[^"'`\s)]*/g;
 function isFinalImageError(e) {
@@ -163879,8 +164591,8 @@ async function generatePetalImage(opts) {
       `Image gateway error (${upstream.status})${body ? `: ${body.slice(0, 200)}` : ""}`
     );
   }
-  const json = await upstream.json();
-  const b64 = json.data?.[0]?.b64_json;
+  const json2 = await upstream.json();
+  const b64 = json2.data?.[0]?.b64_json;
   if (!b64) throw new Error("Image gateway returned no image.");
   const { bytes: bytes2, mime } = dataUrlToBytes(`data:image/png;base64,${b64}`);
   const filename = `${key}.${extensionFor(mime)}`;
@@ -163978,7 +164690,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       } catch (e) {
         last2 = e;
         if (isFinalImageError(e)) break;
-        if (attempt < MAX_ATTEMPTS - 1) await sleep3(RETRY_DELAYS_MS[attempt] ?? 4e3);
+        if (attempt < MAX_ATTEMPTS - 1) await sleep3(RETRY_DELAYS_MS2[attempt] ?? 4e3);
       }
     }
     throw last2;
@@ -164089,7 +164801,7 @@ init_dist4();
 init_terminal_result();
 var STRUCTURED_PREFIX = "@@petal/v1:";
 var cached3 = null;
-function admin2() {
+function admin3() {
   const ctxDb = currentTurnContext().agentDb;
   if (ctxDb) return ctxDb;
   if (cached3) return cached3;
@@ -164124,7 +164836,7 @@ function bodyFor(input) {
   return detail ? `Kimble couldn't finish this one: ${detail.slice(0, 300)}` : "Kimble couldn't finish this one. Nothing was charged \u2014 send it again and it'll pick up from here.";
 }
 async function persistAbandonedTurnReply(input) {
-  const client = admin2();
+  const client = admin3();
   if (!client) return false;
   try {
     const { data: existing } = await client.from("messages").select("id, role, content").eq("project_id", input.projectId).order("created_at", { ascending: false }).limit(8);
@@ -164162,7 +164874,7 @@ init_define_import_meta_env();
 var MAX_REPAIR_ATTEMPTS = 3;
 
 // src/server/turn-completion.server.ts
-var TERMINAL = [
+var TERMINAL2 = [
   "delivered",
   "blocked",
   "budget_spent",
@@ -164197,7 +164909,7 @@ async function openTurnCompletion(args) {
         attempts = Math.max(attempts, spent);
       }
     }
-    await supabaseAdmin.from("project_turn_completion").update({ stage: "superseded", terminal_reason: "a newer request took over" }).eq("project_id", args.projectId).neq("turn_id", args.turnId).not("stage", "in", `(${TERMINAL.join(",")})`);
+    await supabaseAdmin.from("project_turn_completion").update({ stage: "superseded", terminal_reason: "a newer request took over" }).eq("project_id", args.projectId).neq("turn_id", args.turnId).not("stage", "in", `(${TERMINAL2.join(",")})`);
     const { data: data2, error } = await supabaseAdmin.from("project_turn_completion").upsert(
       {
         project_id: args.projectId,
@@ -164220,7 +164932,7 @@ async function openTurnCompletion(args) {
 }
 async function loadOpenCompletion(projectId) {
   try {
-    const { data: data2 } = await supabaseAdmin.from("project_turn_completion").select("*").eq("project_id", projectId).not("stage", "in", `(${TERMINAL.join(",")})`).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { data: data2 } = await supabaseAdmin.from("project_turn_completion").select("*").eq("project_id", projectId).not("stage", "in", `(${TERMINAL2.join(",")})`).order("created_at", { ascending: false }).limit(1).maybeSingle();
     return data2 ? asRecord(data2) : null;
   } catch {
     return null;
@@ -164569,8 +165281,8 @@ Return your merge plan now.`;
       console.warn("[project-memory] writer http error", resp.status);
       return false;
     }
-    const json = await resp.json();
-    const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await resp.json();
+    const argsStr = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!argsStr) return true;
     plan = JSON.parse(argsStr);
   } catch (e) {
@@ -165291,8 +166003,8 @@ Pick one bold direction and call set_design_direction now.`;
       console.warn("[design-director] body read failed \u2014 using deterministic direction", e);
       return persist(fallback());
     }
-    const json = JSON.parse(raw || "{}");
-    const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = JSON.parse(raw || "{}");
+    const argsStr = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!argsStr) return persist(fallback());
     const parsed = JSON.parse(argsStr);
     if (!parsed?.vibe || !parsed?.display_font || !parsed?.body_font || !parsed?.palette_mood || !Array.isArray(parsed.design_moves) || parsed.design_moves.length < 2) {
@@ -165557,8 +166269,8 @@ Rewrite this for the user now.`;
       noFallback: true
     });
     if (!resp.ok) return fallback;
-    const json = await resp.json();
-    const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await resp.json();
+    const argsStr = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!argsStr) return fallback;
     const parsed = JSON.parse(argsStr);
     const message = (parsed?.message ?? "").trim().slice(0, 240);
@@ -171647,8 +172359,8 @@ Generate a concrete brief.`
       console.warn("[brief-expander] upstream failed", upstream.status);
       return { expanded: false, brief: input, original, reason: "ai_failed" };
     }
-    const json = await upstream.json();
-    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const json2 = await upstream.json();
+    const args = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) {
       return { expanded: false, brief: input, original, reason: "ai_failed" };
     }
@@ -172406,6 +173118,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -177263,8 +177976,8 @@ async function proposeChangePlan(args) {
   if (!resp.ok) {
     throw new Error(`plan_proposal_upstream_${resp.status}`);
   }
-  const json = await resp.json();
-  const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+  const json2 = await resp.json();
+  const argsStr = json2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
   if (!argsStr) throw new Error("plan_proposal_no_tool_call");
   let parsed;
   try {
@@ -177771,30 +178484,30 @@ async function relayAndCollect(upstream, controller, encoder) {
       if (!line.startsWith("data:")) continue;
       const payload = line.slice(5).trim();
       if (payload === "[DONE]") continue;
-      let json;
+      let json2;
       try {
-        json = JSON.parse(payload);
+        json2 = JSON.parse(payload);
       } catch {
         continue;
       }
-      const frameProvider = json.provider;
+      const frameProvider = json2.provider;
       if (typeof frameProvider === "string" && frameProvider) tool.upstream = frameProvider;
       {
-        const d = json?.choices?.[0]?.delta;
+        const d = json2?.choices?.[0]?.delta;
         if (d && streamDeltaHasOutput(d)) lastOutputAt = Date.now();
       }
-      const frameError = readErrorFrame(json);
+      const frameError = readErrorFrame(json2);
       if (frameError) {
         tool.providerError = frameError;
         continue;
       }
-      const usage = json.usage;
+      const usage = json2.usage;
       if (usage && (usage.prompt_tokens || usage.completion_tokens)) {
         tool.usage = usage;
       }
-      const topStopReason = json.stop_reason ?? json.finish_reason;
+      const topStopReason = json2.stop_reason ?? json2.finish_reason;
       if (typeof topStopReason === "string") tool.finishReason = topStopReason;
-      const choice = json?.choices?.[0];
+      const choice = json2?.choices?.[0];
       const choiceFinishReason = choice?.finish_reason ?? choice?.stop_reason;
       if (typeof choiceFinishReason === "string") tool.finishReason = choiceFinishReason;
       const delta = choice?.delta;
@@ -183528,9 +184241,9 @@ function createOpsSender(cfg) {
           headers: { "Content-Type": "application/json", "x-petal-timestamp": timestamp, "x-petal-signature": signature },
           body
         });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json.results) throw new Error(`agent_ops_${res.status}: ${json.error ?? "no results"}`);
-        return json.results;
+        const json2 = await res.json().catch(() => ({}));
+        if (!res.ok || !json2.results) throw new Error(`agent_ops_${res.status}: ${json2.error ?? "no results"}`);
+        return json2.results;
       } catch (e) {
         lastErr = e;
       }

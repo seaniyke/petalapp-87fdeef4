@@ -162,6 +162,17 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     console.warn("[cron/turn-resume] balance alert failed:", (e as Error).message);
   }
 
+  // AI gateway health: detect a refused key/credits within minutes and email
+  // the owner once per outage, instead of learning from a failed customer turn.
+  try {
+    const { checkGatewayHealth } = await import("@/server/ai-gateway-health.server");
+    const g = await checkGatewayHealth(internalOrigin(request.url));
+    if (g.state === "down") console.error("[cron/turn-resume] ai gateway down:", g.kind, g.reason);
+    if (g.error) console.warn("[cron/turn-resume] ai gateway alert:", g.error);
+  } catch (e) {
+    console.warn("[cron/turn-resume] ai gateway check failed:", (e as Error).message);
+  }
+
   let creditPausesRecovered = 0;
   try {
     const recovered = await recoverApplyingCreditPauses(MAX_PER_TICK);
