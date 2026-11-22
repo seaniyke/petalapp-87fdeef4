@@ -19,10 +19,10 @@
 import { estimateMessagesTokens, type BudgetMessage } from "./context/budget";
 
 /** Hard ceiling on model spend for the repair phase of a single turn, USD. */
-export const TURN_REPAIR_COST_CEILING_USD = 4;
+export const TURN_REPAIR_COST_CEILING_USD = 1;
 
 /** Soft ceiling — past this, repair may run but only cheap/deterministic tiers. */
-export const TURN_REPAIR_COST_WARN_USD = 3;
+export const TURN_REPAIR_COST_WARN_USD = 0.6;
 
 /**
  * Coarse blended $/1M-token rates. Deliberately pessimistic (output-weighted)

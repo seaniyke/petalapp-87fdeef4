@@ -145,7 +145,9 @@ export function classifyTaskDifficulty(s: {
   promptChars?: number;
 }): TaskDifficulty {
   if (s.crossCutting || s.multiEdit || s.scope === "structural") return "hard";
-  if ((s.promptChars ?? 0) > 1500) return "hard";
+  // A long, detailed message is clear instructions, not hard work: length
+  // alone never escalates to the frontier model (it made small edits cost
+  // up to ~$2.70 on Argon while earning ~$1.40).
   if (s.scope === "micro" && (s.promptChars ?? 0) <= 400) return "micro";
   return "standard";
 }
