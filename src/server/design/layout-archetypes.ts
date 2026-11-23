@@ -15,6 +15,7 @@
  * decides how the content the person asked for is arranged.
  */
 import { LAYOUT_ARCHETYPE_IDS, styleSeedHash, type LayoutArchetypeId } from "./style-catalog";
+import { pickProductPersonality } from "./product-personalities";
 
 export { LAYOUT_ARCHETYPE_IDS, type LayoutArchetypeId } from "./style-catalog";
 
@@ -113,6 +114,11 @@ export function pickLayoutArchetype(brief: string | null | undefined, seed?: str
   const explicit = EXPLICIT.find((e) => e.re.test(text));
   if (explicit) return explicit.id;
   const family = FAMILIES.find((f) => f.re.test(text));
+  // Software products (the saas family, not single-purpose tools) follow their personality's layout.
+  if (family === FAMILIES[1]) {
+    const personality = pickProductPersonality(text, seed);
+    if (personality) return personality.layout;
+  }
   const ids = family?.ids ?? DEFAULT_IDS;
   if (!seed) return ids[0]!;
   return ids[styleSeedHash(`layout:${seed}`) % ids.length]!;

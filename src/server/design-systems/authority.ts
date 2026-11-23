@@ -8,6 +8,7 @@
  * - `applyPackageToTree` installs tokens/fonts/components into a proposed file
  *   tree before a turn commits, so the committed revision always carries them.
  */
+import { pickProductPersonality } from "@/server/design/product-personalities";
 import type { ProjectFile } from "@/server/generate.server";
 import type { PicDesignSystem, PicColorRole } from "@/server/pic/pic-types";
 import { applyDesignSystem } from "./apply";
@@ -232,6 +233,13 @@ export function resolvePackageForIntent(
       const pkg = byslug(rule.slug);
       if (pkg) return { pkg, accent: lockedAccent(pkg, seed) };
     }
+  }
+
+  // 3b. Software products: the personality (explicit reference words, else seed) fixes the look.
+  const personality = LOOK_FAMILIES.find((f) => f.re.test(text))?.id === "product" ? pickProductPersonality(text, seed) : null;
+  if (personality) {
+    const pkg = byslug(personality.look);
+    if (pkg) return { pkg, accent: pkg.accents[personality.accent] ? personality.accent : pkg.meta.default_accent };
   }
 
   // 4. Domain rules. Without a seed this is the whole answer.

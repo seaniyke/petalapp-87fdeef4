@@ -66348,6 +66348,155 @@ var init_build_pricing = __esm({
   }
 });
 
+// src/server/design/style-catalog.ts
+function isLayoutArchetype(v) {
+  return typeof v === "string" && LAYOUT_ARCHETYPE_IDS.includes(v);
+}
+function isPublicLook(v) {
+  return typeof v === "string" && PUBLIC_LOOK_SLUGS.includes(v);
+}
+function sanitizeStyleChoice(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw;
+  const out = {};
+  if (isLayoutArchetype(r.layout)) out.layout = r.layout;
+  if (isPublicLook(r.look)) out.look = r.look;
+  return out.layout || out.look ? out : null;
+}
+function styleSeedHash(seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+var LAYOUT_ARCHETYPE_IDS, PUBLIC_LOOK_SLUGS;
+var init_style_catalog = __esm({
+  "src/server/design/style-catalog.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    LAYOUT_ARCHETYPE_IDS = [
+      "bento-showcase",
+      "editorial-magazine",
+      "split-screen",
+      "app-first",
+      "visual-gallery",
+      "swiss-minimal"
+    ];
+    PUBLIC_LOOK_SLUGS = [
+      "substrate",
+      "meridian",
+      "atelier",
+      "haven",
+      "obsidian",
+      "kinetic",
+      "monolith",
+      "brutalist",
+      "bloom"
+    ];
+  }
+});
+
+// src/server/design/product-personalities.ts
+function pickProductPersonality(brief, seed) {
+  const text = (brief ?? "").slice(0, 4e3);
+  if (!PRODUCT_BRIEF_RE.test(text)) return null;
+  const explicit = EXPLICIT.find((e) => e.re.test(text));
+  if (explicit) return PRODUCT_PERSONALITIES[explicit.id];
+  if (!seed) return null;
+  const id = PRODUCT_PERSONALITY_IDS[styleSeedHash(`personality:${seed}`) % PRODUCT_PERSONALITY_IDS.length];
+  return PRODUCT_PERSONALITIES[id];
+}
+function renderProductPersonalityBlock(id) {
+  const p2 = id ? PRODUCT_PERSONALITIES[id] : void 0;
+  if (!p2) return "";
+  return `
+
+### Product personality: ${p2.name} (in the spirit of ${p2.references})
+` + p2.moves.map((m) => `- ${m}`).join("\n") + `
+- Make this product unmistakably its own: its brand, real product moments and voice lead. Never copy the reference sites; the person's own words win.
+`;
+}
+var PRODUCT_PERSONALITY_IDS, PRODUCT_PERSONALITIES, PRODUCT_BRIEF_RE, EXPLICIT;
+var init_product_personalities = __esm({
+  "src/server/design/product-personalities.ts"() {
+    init_define_import_meta_env();
+    init_style_catalog();
+    PRODUCT_PERSONALITY_IDS = ["terminal", "editorial", "kinetic", "enterprise", "friendly"];
+    PRODUCT_PERSONALITIES = {
+      terminal: {
+        id: "terminal",
+        name: "High-utility terminal",
+        references: "Linear, Vercel",
+        layout: "swiss-minimal",
+        look: "brutalist",
+        accent: "acid",
+        moves: [
+          "Show the product working: a real command palette (\u2318K), keyboard hints, live log or metrics rows.",
+          "Dense, precise information with crisp hairlines; speed and control are the message."
+        ]
+      },
+      editorial: {
+        id: "editorial",
+        name: "Editorial, thoughtful product",
+        references: "Notion, Anthropic, Substack",
+        layout: "editorial-magazine",
+        look: "haven",
+        accent: "sage",
+        moves: [
+          "Tell the product's story like an essay: large calm headlines, generous reading rhythm, captioned product moments.",
+          "Warm, human language and illustrative diagrams instead of feature grids."
+        ]
+      },
+      kinetic: {
+        id: "kinetic",
+        name: "Kinetic, interactive product",
+        references: "Raycast, Supabase",
+        layout: "bento-showcase",
+        look: "kinetic",
+        accent: "electric",
+        moves: [
+          "Bento tiles that move: live widgets, cursor spotlight, glowing edges and gentle spring motion.",
+          "Let visitors touch the product above the fold \u2014 a toggle, a slider or a tiny working demo."
+        ]
+      },
+      enterprise: {
+        id: "enterprise",
+        name: "Enterprise and financial platform",
+        references: "Stripe, Ramp, Mercury",
+        layout: "split-screen",
+        look: "meridian",
+        accent: "cobalt",
+        moves: [
+          "Layered frosted surfaces with soft depth; one side tells the value, the other shows a working calculator, dashboard or flow.",
+          "Quiet confidence: precise numbers, clear trust signals, no hype."
+        ]
+      },
+      friendly: {
+        id: "friendly",
+        name: "Friendly consumer tool",
+        references: "Loom, Pitch, Craft",
+        layout: "visual-gallery",
+        look: "bloom",
+        accent: "berry",
+        moves: [
+          "Warm colour washes, big rounded tappable controls, real people and screenshots in a lively staggered layout.",
+          "Conversational copy that sounds like a friend explaining the tool."
+        ]
+      }
+    };
+    PRODUCT_BRIEF_RE = /\b(saas|dashboard|analytic|developer|fintech|crm|startup|ai (tool|product|platform|app)|admin panel|software|api|devtool|crypto|web3|blockchain|automation)\w*/i;
+    EXPLICIT = [
+      { id: "terminal", re: /\b(linear|vercel|terminal|command[- ]line|cli|keyboard[- ]first|hacker)\b/i },
+      { id: "editorial", re: /\b(notion|anthropic|substack|editorial|essay|calm|thoughtful)\b/i },
+      { id: "kinetic", re: /\b(raycast|supabase|interactive|playful tech|animated|futuristic)\b/i },
+      { id: "enterprise", re: /\b(stripe|ramp|mercury|enterprise|institutional|bank[- ]grade|corporate)\b/i },
+      { id: "friendly", re: /\b(loom|pitch|craft|friendly|consumer|for everyone|beginner)\b/i }
+    ];
+  }
+});
+
 // node_modules/zod/v3/helpers/util.js
 var util, objectUtil, ZodParsedType, getParsedType;
 var init_util = __esm({
@@ -70859,6 +71008,11 @@ function resolvePackageForIntent(brief, opts = {}) {
       if (pkg) return { pkg, accent: lockedAccent(pkg, seed) };
     }
   }
+  const personality = LOOK_FAMILIES.find((f) => f.re.test(text))?.id === "product" ? pickProductPersonality(text, seed) : null;
+  if (personality) {
+    const pkg = byslug(personality.look);
+    if (pkg) return { pkg, accent: pkg.accents[personality.accent] ? personality.accent : pkg.meta.default_accent };
+  }
   const primary = primaryPackageForIntent(text, byslug);
   if (!seed || !primary) return primary;
   const family = text && LOOK_FAMILIES.find((f) => f.re.test(text)) || null;
@@ -70954,6 +71108,7 @@ var DEFAULT_PACKAGE_SLUG, ACCENT_RULES, DARK_EDITORIAL, STUDIO_RULES, EXPLICIT_L
 var init_authority = __esm({
   "src/server/design-systems/authority.ts"() {
     init_define_import_meta_env();
+    init_product_personalities();
     init_apply();
     init_registry();
     DEFAULT_PACKAGE_SLUG = "substrate";
@@ -142356,6 +142511,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -142520,6 +142676,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -142563,6 +142720,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -165915,52 +166073,8 @@ init_authority();
 
 // src/server/design/layout-archetypes.ts
 init_define_import_meta_env();
-
-// src/server/design/style-catalog.ts
-init_define_import_meta_env();
-var LAYOUT_ARCHETYPE_IDS = [
-  "bento-showcase",
-  "editorial-magazine",
-  "split-screen",
-  "app-first",
-  "visual-gallery",
-  "swiss-minimal"
-];
-var PUBLIC_LOOK_SLUGS = [
-  "substrate",
-  "meridian",
-  "atelier",
-  "haven",
-  "obsidian",
-  "kinetic",
-  "monolith",
-  "brutalist",
-  "bloom"
-];
-function isLayoutArchetype(v) {
-  return typeof v === "string" && LAYOUT_ARCHETYPE_IDS.includes(v);
-}
-function isPublicLook(v) {
-  return typeof v === "string" && PUBLIC_LOOK_SLUGS.includes(v);
-}
-function sanitizeStyleChoice(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const r = raw;
-  const out = {};
-  if (isLayoutArchetype(r.layout)) out.layout = r.layout;
-  if (isPublicLook(r.look)) out.look = r.look;
-  return out.layout || out.look ? out : null;
-}
-function styleSeedHash(seed) {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return Math.abs(h);
-}
-
-// src/server/design/layout-archetypes.ts
+init_style_catalog();
+init_product_personalities();
 var LAYOUT_ARCHETYPES = {
   "bento-showcase": {
     name: "Bento showcase",
@@ -166017,7 +166131,7 @@ var LAYOUT_ARCHETYPES = {
     ]
   }
 };
-var EXPLICIT = [
+var EXPLICIT2 = [
   { id: "bento-showcase", re: /\bbento\b/i },
   { id: "split-screen", re: /\bsplit[- ]?screen\b/i },
   { id: "visual-gallery", re: /\b(masonry|gallery[- ](style|layout|grid))\b/i },
@@ -166038,9 +166152,13 @@ var FAMILIES = [
 var DEFAULT_IDS = ["editorial-magazine", "split-screen", "bento-showcase", "visual-gallery", "swiss-minimal"];
 function pickLayoutArchetype(brief, seed) {
   const text = (brief ?? "").slice(0, 4e3);
-  const explicit = EXPLICIT.find((e) => e.re.test(text));
+  const explicit = EXPLICIT2.find((e) => e.re.test(text));
   if (explicit) return explicit.id;
   const family = FAMILIES.find((f) => f.re.test(text));
+  if (family === FAMILIES[1]) {
+    const personality = pickProductPersonality(text, seed);
+    if (personality) return personality.layout;
+  }
   const ids = family?.ids ?? DEFAULT_IDS;
   if (!seed) return ids[0];
   return ids[styleSeedHash(`layout:${seed}`) % ids.length];
@@ -166065,6 +166183,8 @@ ${a2.name}: ${a2.summary}.
 }
 
 // src/server/design-director.server.ts
+init_product_personalities();
+init_style_catalog();
 init_templates_server();
 init_app_shape_classifier();
 var DIRECTOR_MODEL = "google/gemini-3.8-flash";
@@ -166224,6 +166344,10 @@ function withCommittedStyle(d, brief, seed, style) {
   const choice = sanitizeStyleChoice(style);
   const layout = choice?.layout ?? (isLayoutArchetype(d.layout_archetype) ? d.layout_archetype : pickLayoutArchetype(brief, seed ?? brief));
   const next = { ...d, layout_archetype: layout };
+  if (!next.personality) {
+    const personality = pickProductPersonality(brief, seed ?? null);
+    if (personality) next.personality = personality.id;
+  }
   if (choice?.look) next.look = choice.look;
   else if (next.look && !isPublicLook(next.look)) delete next.look;
   return next;
@@ -166348,7 +166472,7 @@ ${moves}
 - design moves to land:
 ${moves}
 Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.
-` + renderLayoutArchetypeBlock(layoutId, "full") + templateBlock;
+` + renderLayoutArchetypeBlock(layoutId, "full") + renderProductPersonalityBlock(d.personality) + templateBlock;
 }
 function readDirectionFromMemory(entries) {
   const row = entries.find((e) => e.key === "design_direction");

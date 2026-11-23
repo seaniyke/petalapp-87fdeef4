@@ -27,6 +27,7 @@ import type { MemoryEntry } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { resolveDefaultPackage } from "@/server/design-systems/authority";
 import { pickLayoutArchetype, renderLayoutArchetypeBlock } from "@/server/design/layout-archetypes";
+import { pickProductPersonality, renderProductPersonalityBlock } from "@/server/design/product-personalities";
 import {
   isLayoutArchetype,
   isPublicLook,
@@ -173,6 +174,8 @@ export type DesignDirection = {
   layout_archetype?: LayoutArchetypeId;
   /** Look (design-system package slug) the caller chose explicitly via the public API. */
   look?: string;
+  /** Software-product personality committed on the first build (see design/product-personalities). */
+  personality?: string;
 };
 
 /**
@@ -315,6 +318,10 @@ export function withCommittedStyle(
   const choice = sanitizeStyleChoice(style);
   const layout = choice?.layout ?? (isLayoutArchetype(d.layout_archetype) ? d.layout_archetype : pickLayoutArchetype(brief, seed ?? brief));
   const next: DesignDirection = { ...d, layout_archetype: layout };
+  if (!next.personality) {
+    const personality = pickProductPersonality(brief, seed ?? null);
+    if (personality) next.personality = personality.id;
+  }
   if (choice?.look) next.look = choice.look;
   else if (next.look && !isPublicLook(next.look)) delete next.look;
   return next;
@@ -464,6 +471,7 @@ export function renderDesignDirectionBlock(
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
     renderLayoutArchetypeBlock(layoutId, "full") +
+    renderProductPersonalityBlock(d.personality) +
     templateBlock
   );
 }
