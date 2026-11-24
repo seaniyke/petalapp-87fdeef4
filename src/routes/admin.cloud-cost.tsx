@@ -19,7 +19,12 @@ import { toast } from "@/lib/notify";
 export const Route = createFileRoute("/admin/cloud-cost")({
   head: () => ({
     meta: [
-      { title: "Admin · Cloud Cost" },
+      { title: "Petal \u00b7 Cloud Cost" },
+      { name: "description", content: "Private Petal operator view for cloud cost." },
+      { property: "og:title", content: "Petal \u00b7 Cloud Cost" },
+      { property: "og:description", content: "Private Petal operator view for cloud cost." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

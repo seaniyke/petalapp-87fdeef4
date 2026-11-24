@@ -25,7 +25,12 @@ import { toast } from "@/lib/notify";
 export const Route = createFileRoute("/admin/")({
   head: () => ({
     meta: [
-      { title: "Admin · Overview" },
+      { title: "Petal \u00b7 Overview" },
+      { name: "description", content: "Private Petal operator view for overview." },
+      { property: "og:title", content: "Petal \u00b7 Overview" },
+      { property: "og:description", content: "Private Petal operator view for overview." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

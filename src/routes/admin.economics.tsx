@@ -23,7 +23,12 @@ import { BuildBillingPanel } from "@/components/admin/BuildBillingPanel";
 export const Route = createFileRoute("/admin/economics")({
   head: () => ({
     meta: [
-      { title: "Admin · Economics" },
+      { title: "Petal \u00b7 Economics" },
+      { name: "description", content: "Private Petal operator view for economics." },
+      { property: "og:title", content: "Petal \u00b7 Economics" },
+      { property: "og:description", content: "Private Petal operator view for economics." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

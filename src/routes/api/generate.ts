@@ -3260,6 +3260,7 @@ async function handleGenerateRequestCore(
     manifest: projectCtx.manifest,
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths,
+    repair: isRepairTurn,
   });
   const executionScopeBlockBase = isInitial ? "" : renderScopeBlock(executionScope);
   // Lifecycle phase in the agent context (existing prompt assembly).
@@ -5429,6 +5430,7 @@ async function handleGenerateRequestCore(
             neighbourPaths: impactNeighbourPaths,
             existingPaths: currentFiles.map((f) => f.path),
             disabled: isInitial || isCrossCutting,
+            repair: isRepairTurn,
             allowNewPages: /\b(add|create|build|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent),
           });
           if (editBoundary.enforced) {

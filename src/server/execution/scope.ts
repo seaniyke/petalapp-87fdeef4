@@ -37,6 +37,8 @@ export function buildExecutionScope(args: {
   manifest: ProjectManifest | null;
   targets: string[];
   neighbours?: string[];
+  /** Internal repair flags use the same dependency scope as explicit repairs. */
+  repair?: boolean;
 }): ExecutionScope {
   const { request, classification, manifest } = args;
   const targets = Array.from(new Set(args.targets));
@@ -48,9 +50,10 @@ export function buildExecutionScope(args: {
     classification.operation === "page_creation" ||
     targets.length === 0;
   const chromeNamed = CHROME_WORDS.test(request);
+  const repairing = args.repair || classification.operation === "repair";
 
   const reason = (p: string): string | null => {
-    if (wide || targets.includes(p)) return null;
+    if (wide || targets.includes(p) || (repairing && neighbours.includes(p))) return null;
     if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
     if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
     return null;
@@ -59,7 +62,7 @@ export function buildExecutionScope(args: {
   const protectedAreas = wide
     ? []
     : [
-        ...(chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l))),
+        ...(chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l) && !(repairing && neighbours.includes(l)))),
         ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p)),
       ];
 

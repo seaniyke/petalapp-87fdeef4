@@ -18,7 +18,12 @@ import { fmtRelative } from "@/lib/admin-api";
 export const Route = createFileRoute("/admin/benchmark")({
   head: () => ({
     meta: [
-      { title: "Admin · Nightly benchmark" },
+      { title: "Petal \u00b7 Nightly benchmark" },
+      { name: "description", content: "Private Petal operator view for nightly benchmark." },
+      { property: "og:title", content: "Petal \u00b7 Nightly benchmark" },
+      { property: "og:description", content: "Private Petal operator view for nightly benchmark." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

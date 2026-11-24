@@ -19,7 +19,12 @@ import { runQAHarness, type Finding, type Severity } from "@/lib/qa-harness";
 export const Route = createFileRoute("/admin/qa")({
   head: () => ({
     meta: [
-      { title: "Admin · Catalog QA" },
+      { title: "Petal \u00b7 Catalog QA" },
+      { name: "description", content: "Private Petal operator view for catalog qa." },
+      { property: "og:title", content: "Petal \u00b7 Catalog QA" },
+      { property: "og:description", content: "Private Petal operator view for catalog qa." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

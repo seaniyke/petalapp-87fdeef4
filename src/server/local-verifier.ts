@@ -1,5 +1,5 @@
 /**
- * Local (deterministic) verifier — no model call, <5ms per file.
+ * Local deterministic verifier — no model call; semantic checks batch per tree.
  *
  * Catches the failure mode our model-based verifier can miss:
  *   - Truncated streams (file ends mid-JSX or mid-statement)
@@ -12,6 +12,7 @@
  */
 import { getKitManifest } from "./kit-manifest.server";
 import { isMissingRootView } from "./renderable-shell.server";
+import { checkUndefinedIdentifiers } from "./verification/identifiers.server";
 
 
 export interface LocalIssue {
@@ -457,168 +458,6 @@ function findUnterminatedString(src: string): string | null {
   return null;
 }
 
-/**
- * Find PascalCase JSX tag names that have no corresponding import or local
- * declaration in the file. Catches the common failure mode where the model
- * writes `<Container>` / `<Inline>` / `<Button>` etc. without an import,
- * which compiles fine (TS treats them as `any`) but throws ReferenceError
- * at runtime in the deployed bundle.
- *
- * Heuristic, not a full resolver — we only flag names that don't appear
- * anywhere outside JSX as a defensible declaration site.
- */
-function findUndefinedComponents(src: string, clean: string): string[] {
-  // Scan for `<Foo` occurrences while excluding TS-generic positions
-  // (preceded by an identifier-char, `]`, or `)`). Mirrors the disambiguation
-  // in jsxTagBalance — keep them in sync.
-  const tags = new Set<string>();
-  const n = clean.length;
-  for (let i = 0; i < n; i++) {
-    if (clean[i] !== "<") continue;
-    if (clean[i + 1] === "/") continue;
-    let j = i + 1;
-    const start = j;
-    while (j < n && /[A-Za-z0-9_]/.test(clean[j])) j++;
-    const name = clean.slice(start, j);
-    if (!name || !/^[A-Z]/.test(name)) continue;
-    // Look back past whitespace.
-    let p = i - 1;
-    while (p >= 0 && /\s/.test(clean[p])) p--;
-    const prev = p >= 0 ? clean[p] : undefined;
-    if (prev && /[A-Za-z0-9_$\])]/.test(prev)) continue; // generic
-    tags.add(name);
-  }
-  if (tags.size === 0) return [];
-
-  // Collect "declared" names from imports + local declarations.
-  const declared = new Set<string>();
-
-  // Imports: import X, {A, B as C}, * as NS from "..."
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,?\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  let m: RegExpExecArray | null;
-  while ((m = importRe.exec(src))) {
-    if (m[1]) declared.add(m[1]);
-    if (m[3]) declared.add(m[3]);
-    if (m[2]) {
-      for (const part of m[2].split(",")) {
-        const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
-        if (name) declared.add(name);
-      }
-    }
-  }
-  // Plain `import "..."` and `import * as NS from "..."` (already handled above).
-
-  // Local declarations: const Foo = ..., function Foo(...), class Foo
-  const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
-  while ((m = declRe.exec(src))) declared.add(m[1]);
-
-  // Destructured bindings, including the extremely common dynamic-icon idiom:
-  //   const { icon: Icon } = habit;         →  <Icon />
-  //   habits.map(({ icon: Icon }) => ...)   →  <Icon />
-  //   function Row({ Icon }) { ... }
-  // These are real bindings, and missing them used to roll back whole builds.
-  const aliasRe = /(?:[:,{(]|\.\.\.)\s*([A-Z][A-Za-z0-9_]*)\s*(?=[,}\]=)])/g;
-  while ((m = aliasRe.exec(src))) declared.add(m[1]);
-  // `const Icon = x ? A : B;` style assignments already covered by declRe, but
-  // also allow any capitalized name that is assigned to anywhere in the file.
-  const assignRe = /(?:^|[\s,({[])([A-Z][A-Za-z0-9_]*)\s*=[^=>]/g;
-  while ((m = assignRe.exec(src))) declared.add(m[1]);
-
-
-  // React intrinsics + namespace shortcuts that don't need imports.
-  const builtins = new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
-
-  const missing: string[] = [];
-  for (const tag of tags) {
-    if (declared.has(tag)) continue;
-    if (builtins.has(tag)) continue;
-    // Namespaced tags like <Foo.Bar> never trigger here (we matched only the head).
-    // If a name is used as `Tag.X` (e.g. <RadioGroup.Item>), the JSX regex
-    // captures only `RadioGroup`, which still must be imported, so this is fine.
-    missing.push(tag);
-  }
-  return missing;
-}
-
-const BUILTIN_GLOBALS = new Set([
-  "Array", "Boolean", "Date", "Error", "Intl", "JSON", "Map", "Math", "Number", "Object", "Promise", "React", "RegExp", "Set", "String", "URL",
-  "console", "document", "globalThis", "localStorage", "navigator", "sessionStorage", "window",
-  // JavaScript literals/operators can match the deliberately conservative
-  // lowercase-reference regexes below, but they are never declarations.
-  "undefined", "null", "true", "false", "NaN", "Infinity",
-  // TypeScript type keywords. `Record<string, number>` and `Map<string, Foo>`
-  // put `string`/`number` right before a comma, which the candidate regexes
-  // read as a value reference. Treating them as leaks rolled back otherwise
-  // perfectly valid builds, so they are always in scope.
-  "string", "number", "boolean", "bigint", "symbol", "object", "any", "unknown",
-  "never", "void", "this", "self",
-  // Reserved words and TS modifiers that can appear in the same positions.
-  "typeof", "keyof", "infer", "asserts", "is", "as", "in", "of", "out",
-  "readonly", "declare", "abstract", "satisfies", "extends", "implements",
-  "new", "delete", "await", "yield", "return", "throw", "case", "default",
-  "if", "else", "for", "while", "do", "switch", "break", "continue",
-  "try", "catch", "finally", "export", "import", "from", "async", "static",
-  "public", "private", "protected", "get", "set", "instanceof",
-]);
-
-
-function findObviousScopeLeaks(src: string): string[] {
-  const declared = new Set<string>(BUILTIN_GLOBALS);
-  let m: RegExpExecArray | null;
-  const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
-  while ((m = declRe.exec(src))) declared.add(m[1]);
-  // Hook/form APIs overwhelmingly use destructuring. Treat every binding in
-  // the declaration pattern as local (`const [value, setValue] = …` and
-  // `const { watch, formState: { errors } } = …`). Without this, valid forms
-  // are rejected as scope leaks after generation.
-  const destructuredDeclRe = /\b(?:const|let|var)\s+([\[{])([\s\S]{1,500}?)[\]}]\s*=/g;
-  while ((m = destructuredDeclRe.exec(src))) {
-    const binding = m[2]
-      .replace(/\b[A-Za-z_$][\w$]*\s*:/g, " ")
-      .replace(/=[^,}\]]+/g, " ");
-    for (const name of binding.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
-  }
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  while ((m = importRe.exec(src))) {
-    if (m[1]) declared.add(m[1]);
-    if (m[3]) declared.add(m[3]);
-    if (m[2]) for (const part of m[2].split(",")) {
-      const piece = part.trim().replace(/^type\s+/i, "");
-      const name = piece.split(/\s+as\s+/i).pop()?.trim();
-      if (name) declared.add(name);
-    }
-  }
-  const paramRe = /\(([^)]{1,240})\)\s*(?::\s*[^=]+)?=>|function\s*[A-Za-z_$]*\s*\(([^)]{0,240})\)/g;
-  while ((m = paramRe.exec(src))) {
-    const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
-    for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
-  }
-  const singleArrowParamRe = /(?:^|[,(]\s*)([A-Za-z_$][\w$]*)\s*=>/g;
-  while ((m = singleArrowParamRe.exec(src))) declared.add(m[1]);
-
-  // JSX text nodes are prose, not code. "your due date, and your age," would
-  // otherwise look like identifier references and produce false positives that
-  // roll back a perfectly valid build.
-  const clean = stripNoise(maskJsxText(src)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
-
-  const missing: string[] = [];
-  const seen = new Set<string>();
-  const add = (name: string | undefined) => {
-    if (!name || declared.has(name) || seen.has(name)) return;
-    seen.add(name);
-    missing.push(name);
-  };
-  const candidateRes = [
-    /\bArray\s*\.\s*isArray\s*\(\s*([a-z][\w$]*)\s*\)/g,
-    /\b([a-z][\w$]*)\s*(?:&&|\|\||\?\?|,)/g,
-    /(?:^|[({[,])\s*([a-z][\w$]*)\s*[,)]/g,
-  ];
-  for (const re of candidateRes) {
-    while ((m = re.exec(clean))) add(m[1]);
-  }
-  return missing.slice(0, 8);
-}
-
 function normalizePath(path: string): string {
   const out: string[] = [];
   for (const part of path.split("/")) {
@@ -667,7 +506,7 @@ function findLazyNamedExportIssues(files: { path: string; content: string }[], c
   return issues;
 }
 
-export function verifyFileLocal(path: string, content: string): LocalIssue[] {
+function verifyFileStructure(path: string, content: string): LocalIssue[] {
   if (!SCANNABLE.test(path)) return [];
   const issues: LocalIssue[] = [];
 
@@ -730,25 +569,30 @@ export function verifyFileLocal(path: string, content: string): LocalIssue[] {
     }
   }
 
-  const missing = findUndefinedComponents(content, clean);
-  if (missing.length > 0) {
-    issues.push({
-      path,
-      kind: "undefined",
-      detail: `undefined component(s): ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? "…" : ""}`,
-    });
-  }
-
-  const scopeLeaks = findObviousScopeLeaks(content);
-  if (scopeLeaks.length > 0) {
-    issues.push({
-      path,
-      kind: "scope",
-      detail: `references undeclared variable(s): ${scopeLeaks.join(", ")}. Declare them, add them to the component props/destructure, or remove the stale expression before shipping.`,
-    });
-  }
 
   return issues;
+}
+
+/** Semantic diagnostics are batched over the actual proposed tree. */
+function identifierIssues(files: { path: string; content: string }[], changed: string[]): LocalIssue[] {
+  const identifiers = checkUndefinedIdentifiers(files, changed);
+  if (identifiers.status === "unavailable") {
+    // The final proposed-tree gate owns the unavailable policy; never ask
+    // a code writer to fix checker infrastructure.
+    console.warn("[local-verifier] identifier check unavailable:", identifiers.reason);
+  }
+  return identifiers.issues.map(issue => {
+    const name = /Cannot find name '([^']+)'/.exec(issue.message)?.[1];
+    return {
+      path: issue.path,
+      kind: name && /^[A-Z]/.test(name) ? "undefined" as const : "scope" as const,
+      detail: `references undeclared variable(s): ${name ?? issue.message} (line ${issue.line}). ${issue.message}`,
+    };
+  });
+}
+
+export function verifyFileLocal(path: string, content: string): LocalIssue[] {
+  return [...verifyFileStructure(path, content), ...identifierIssues([{ path, content }], [path])];
 }
 
 /**
@@ -1498,13 +1342,16 @@ export function verifyFilesLocal(
 ): LocalVerdict {
   const changed = new Set(changedPaths);
   const issues: LocalIssue[] = [];
+  const semanticPaths: string[] = [];
   for (const f of files) {
     if (!changed.has(f.path)) continue;
     if (f.path.startsWith("src/components/ui/")) continue;
     if (f.path.startsWith("src/integrations/")) continue;
     if (f.path.startsWith("src/components/examples/")) continue;
-    issues.push(...verifyFileLocal(f.path, f.content));
+    issues.push(...verifyFileStructure(f.path, f.content));
+    semanticPaths.push(f.path);
   }
+  issues.push(...identifierIssues(files, semanticPaths));
   issues.push(...findLazyNamedExportIssues(files, changed));
   issues.push(...findUnresolvedImports(files, changed));
   issues.push(...findMissingNamedExports(files, changed));

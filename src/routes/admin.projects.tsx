@@ -32,7 +32,12 @@ import { adminApi, fmtRelative } from "@/lib/admin-api";
 export const Route = createFileRoute("/admin/projects")({
   head: () => ({
     meta: [
-      { title: "Admin · Projects" },
+      { title: "Petal \u00b7 Projects" },
+      { name: "description", content: "Private Petal operator view for projects." },
+      { property: "og:title", content: "Petal \u00b7 Projects" },
+      { property: "og:description", content: "Private Petal operator view for projects." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

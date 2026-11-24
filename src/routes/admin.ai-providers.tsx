@@ -85,7 +85,12 @@ async function callAdminApi<T>(
 export const Route = createFileRoute("/admin/ai-providers")({
   head: () => ({
     meta: [
-      { title: "Admin · AI Providers" },
+      { title: "Petal \u00b7 AI Providers" },
+      { name: "description", content: "Private Petal operator view for ai providers." },
+      { property: "og:title", content: "Petal \u00b7 AI Providers" },
+      { property: "og:description", content: "Private Petal operator view for ai providers." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

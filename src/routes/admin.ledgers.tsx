@@ -12,7 +12,12 @@ import { adminApi, fmtUsd, fmtDate, downloadCsv } from "@/lib/admin-api";
 export const Route = createFileRoute("/admin/ledgers")({
   head: () => ({
     meta: [
-      { title: "Admin · Ledgers & transactions" },
+      { title: "Petal \u00b7 Ledgers & transactions" },
+      { name: "description", content: "Private Petal operator view for ledgers & transactions." },
+      { property: "og:title", content: "Petal \u00b7 Ledgers & transactions" },
+      { property: "og:description", content: "Private Petal operator view for ledgers & transactions." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

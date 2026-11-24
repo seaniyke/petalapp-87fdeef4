@@ -26,7 +26,12 @@ import { useAdminGuard } from "@/hooks/use-admin-guard";
 export const Route = createFileRoute("/admin/builder")({
   head: () => ({
     meta: [
-      { title: "Admin · Builder Deploys" },
+      { title: "Petal \u00b7 Builder Deploys" },
+      { name: "description", content: "Private Petal operator view for builder deploys." },
+      { property: "og:title", content: "Petal \u00b7 Builder Deploys" },
+      { property: "og:description", content: "Private Petal operator view for builder deploys." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

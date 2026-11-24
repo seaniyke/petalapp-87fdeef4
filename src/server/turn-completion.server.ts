@@ -126,14 +126,18 @@ export async function openTurnCompletion(args: {
 }): Promise<CompletionRecord | null> {
   try {
     let attempts = args.inheritAttempts ?? 0;
+    let previous: CompletionRecord | null = null;
     if (args.isAutoFix) {
-      const previous = await loadOpenCompletion(args.projectId);
+      previous = await loadOpenCompletion(args.projectId);
       if (previous && previous.turn_id !== args.turnId) {
         const spent =
-          previous.stage === "needs_repair" || previous.stage === "repairing"
+          previous.stage === "needs_repair"
             ? previous.attempts + 1
             : previous.attempts;
         attempts = Math.max(attempts, spent);
+      } else if (previous) {
+        // Re-attaching to the same turn cannot reset its spent budget.
+        attempts = Math.max(attempts, previous.attempts);
       }
     }
 
@@ -153,7 +157,13 @@ export async function openTurnCompletion(args: {
           turn_id: args.turnId,
           stage: "generating",
           attempts,
-          outstanding_defects: [],
+          max_attempts: previous?.max_attempts ?? MAX_COMPLETION_ATTEMPTS,
+          // Preserve the defect identity across autonomous turn ids. Otherwise
+          // recordBuildOutcome cannot detect an unchanged failed repair.
+          outstanding_defects: previous?.outstanding_defects ?? [],
+          defect_fingerprint: previous?.defect_fingerprint ?? null,
+          last_build_id: previous?.last_build_id ?? null,
+          evidence: previous?.evidence ?? [],
           terminal_reason: null,
           resume_after: null,
         } as never,

@@ -11,7 +11,12 @@ import { toast } from "@/lib/notify";
 export const Route = createFileRoute("/admin/pipeline")({
   head: () => ({
     meta: [
-      { title: "Admin · Pipeline telemetry" },
+      { title: "Petal \u00b7 Pipeline telemetry" },
+      { name: "description", content: "Private Petal operator view for pipeline telemetry." },
+      { property: "og:title", content: "Petal \u00b7 Pipeline telemetry" },
+      { property: "og:description", content: "Private Petal operator view for pipeline telemetry." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

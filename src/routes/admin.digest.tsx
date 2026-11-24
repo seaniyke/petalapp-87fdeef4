@@ -13,7 +13,12 @@ import { fmtRelative } from "@/lib/admin-api";
 export const Route = createFileRoute("/admin/digest")({
   head: () => ({
     meta: [
-      { title: "Admin · Self-learning digest" },
+      { title: "Petal \u00b7 Self-learning digest" },
+      { name: "description", content: "Private Petal operator view for self-learning digest." },
+      { property: "og:title", content: "Petal \u00b7 Self-learning digest" },
+      { property: "og:description", content: "Private Petal operator view for self-learning digest." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

@@ -239,7 +239,7 @@ export function checkUndefinedIdentifiers(
       noEmit: true,
       noLib: true,
       allowJs: true,
-      checkJs: false,
+      checkJs: true,
       jsx: ts.JsxEmit.ReactJSX,
       target: ts.ScriptTarget.ESNext,
       module: ts.ModuleKind.ESNext,

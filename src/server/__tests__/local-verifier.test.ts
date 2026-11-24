@@ -226,6 +226,8 @@ export function SectionHeader({ title }) {
 
 run("Regression — form destructuring and JS literals are valid scope", () => {
   const form = `
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 export function Calculator() {
   const [activeTab, setActiveTab] = useState("due-date");
   const { watch, setValue, trigger, formState: { errors } } = useForm();

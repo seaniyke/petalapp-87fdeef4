@@ -38967,6 +38967,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -64648,6 +64649,383 @@ var init_renderable_shell_server = __esm({
   }
 });
 
+// src/server/verification/ts-runtime-shim.ts
+var ts_runtime_shim_exports = {};
+__export(ts_runtime_shim_exports, {
+  TS_RUNTIME_READY: () => TS_RUNTIME_READY,
+  installTsRuntimeGlobals: () => installTsRuntimeGlobals
+});
+function installTsRuntimeGlobals() {
+  return install();
+}
+function install() {
+  const g = globalThis;
+  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
+  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
+  return true;
+}
+var TS_RUNTIME_READY;
+var init_ts_runtime_shim = __esm({
+  "src/server/verification/ts-runtime-shim.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TS_RUNTIME_READY = install();
+  }
+});
+
+// src/server/verification/identifiers.server.ts
+var identifiers_server_exports = {};
+__export(identifiers_server_exports, {
+  IDENTIFIER_CHECK_BUDGET_MS: () => IDENTIFIER_CHECK_BUDGET_MS,
+  checkUndefinedIdentifiers: () => checkUndefinedIdentifiers,
+  isPlatformGlobal: () => isPlatformGlobal
+});
+import ts from "typescript";
+function isPlatformGlobal(name) {
+  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
+}
+function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
+  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
+  const targets = changedPaths.filter((p2) => PARSEABLE.test(p2));
+  if (targets.length === 0) return { status: "verified", issues: [] };
+  const now = opts.now ?? (() => Date.now());
+  const started = now();
+  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
+  try {
+    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
+    const options = {
+      noEmit: true,
+      noLib: true,
+      allowJs: true,
+      checkJs: true,
+      jsx: ts.JsxEmit.ReactJSX,
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      skipLibCheck: true,
+      types: []
+      // React 17+ JSX transform: tag names are not value identifiers, so
+      // untyped JSX never produces a TS2304 false positive.
+    };
+    const host = {
+      getSourceFile: (name, languageVersion) => {
+        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
+        if (content === void 0) return void 0;
+        return ts.createSourceFile(name, content, languageVersion, true);
+      },
+      getDefaultLibFileName: () => AMBIENT_PATH,
+      writeFile: () => {
+      },
+      getCurrentDirectory: () => "/",
+      getDirectories: () => [],
+      getCanonicalFileName: (f) => f,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
+      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
+    };
+    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
+    const wanted = new Set(targets.map((p2) => `/${p2}`));
+    const seen = /* @__PURE__ */ new Set();
+    const issues = [];
+    const diagnostics = [];
+    for (const path of wanted) {
+      const sf = program.getSourceFile(path);
+      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
+      diagnostics.push(...program.getSemanticDiagnostics(sf));
+      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
+    }
+    for (const d of diagnostics) {
+      if (d.code !== CANNOT_FIND_NAME) continue;
+      const file = d.file?.fileName;
+      if (!file || !wanted.has(file)) continue;
+      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
+      if (name && isPlatformGlobal(name)) continue;
+      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
+      const key = `${file}::${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: file.slice(1), line: line + 1, message });
+    }
+    return { status: issues.length ? "failed" : "verified", issues };
+  } catch (e) {
+    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
+    console.warn("[identifier-gate] unavailable:", reason);
+    return { status: "unavailable", issues: [], reason };
+  }
+}
+function inTypePosition(ts2, sf, pos) {
+  let hit;
+  const visit = (n) => {
+    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+      hit = n;
+      ts2.forEachChild(n, visit);
+    }
+  };
+  ts2.forEachChild(sf, visit);
+  for (let n = hit; n; n = n.parent) {
+    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
+    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
+    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
+  }
+  return false;
+}
+var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
+var init_identifiers_server = __esm({
+  "src/server/verification/identifiers.server.ts"() {
+    init_define_import_meta_env();
+    init_ts_runtime_shim();
+    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
+    CANNOT_FIND_NAME = 2304;
+    PARSEABLE = /\.(tsx?|jsx?)$/i;
+    AMBIENT_GLOBALS = `
+declare var console: any;
+declare var window: any;
+declare var document: any;
+declare var navigator: any;
+declare var location: any;
+declare var history: any;
+declare var localStorage: any;
+declare var sessionStorage: any;
+declare var fetch: any;
+declare var setTimeout: any;
+declare var setInterval: any;
+declare var clearTimeout: any;
+declare var clearInterval: any;
+declare var setImmediate: any;
+declare var clearImmediate: any;
+declare var requestAnimationFrame: any;
+declare var cancelAnimationFrame: any;
+declare var requestIdleCallback: any;
+declare var queueMicrotask: any;
+declare var structuredClone: any;
+declare var alert: any;
+declare var confirm: any;
+declare var prompt: any;
+declare var atob: any;
+declare var btoa: any;
+declare var crypto: any;
+declare var performance: any;
+declare var globalThis: any;
+declare var process: any;
+declare var Buffer: any;
+declare var module: any;
+declare var require: any;
+declare var exports: any;
+declare var __dirname: any;
+declare var __filename: any;
+declare var global: any;
+declare var undefined: undefined;
+declare var NaN: number;
+declare var Infinity: number;
+declare var parseInt: any;
+declare var parseFloat: any;
+declare var isNaN: any;
+declare var isFinite: any;
+declare var encodeURI: any;
+declare var decodeURI: any;
+declare var encodeURIComponent: any;
+declare var decodeURIComponent: any;
+declare type Console = any;
+declare type Window = any;
+declare type Document = any;
+declare type Navigator = any;
+declare type Storage = any;
+declare type Response = any;
+declare type Request = any;
+declare type Headers = any;
+declare type URL = any;
+declare type URLSearchParams = any;
+declare type FormData = any;
+declare type Blob = any;
+declare type File = any;
+declare type FileReader = any;
+declare type Event = any;
+declare type EventTarget = any;
+declare type CustomEvent = any;
+declare type KeyboardEvent = any;
+declare type MouseEvent = any;
+declare type PointerEvent = any;
+declare type TouchEvent = any;
+declare type DragEvent = any;
+declare type FocusEvent = any;
+declare type InputEvent = any;
+declare type SubmitEvent = any;
+declare type AnimationEvent = any;
+declare type TransitionEvent = any;
+declare type WheelEvent = any;
+declare type ClipboardEvent = any;
+declare type MediaQueryList = any;
+declare type HTMLElement = any;
+declare type HTMLInputElement = any;
+declare type HTMLTextAreaElement = any;
+declare type HTMLSelectElement = any;
+declare type HTMLFormElement = any;
+declare type HTMLAnchorElement = any;
+declare type HTMLButtonElement = any;
+declare type HTMLImageElement = any;
+declare type HTMLVideoElement = any;
+declare type HTMLCanvasElement = any;
+declare type HTMLDivElement = any;
+declare type HTMLSpanElement = any;
+declare type SVGElement = any;
+declare type SVGSVGElement = any;
+declare type Element = any;
+declare type Node = any;
+declare type NodeList = any;
+declare type NodeListOf<T> = any;
+declare type MutationObserver = any;
+declare type ResizeObserver = any;
+declare type ResizeObserverEntry = any;
+declare type IntersectionObserver = any;
+declare type IntersectionObserverEntry = any;
+declare type AbortController = any;
+declare type AbortSignal = any;
+declare type TextEncoder = any;
+declare type TextDecoder = any;
+declare type WebSocket = any;
+declare type Worker = any;
+declare type Image = any;
+declare type Audio = any;
+declare type Geolocation = any;
+declare type CanvasRenderingContext2D = any;
+declare type WebGLRenderingContext = any;
+declare type RequestInit = any;
+declare type ResponseInit = any;
+declare type HeadersInit = any;
+declare type BodyInit = any;
+declare type Timer = any;
+declare type Timeout = any;
+declare namespace NodeJS {
+  type Timeout = any;
+  type Timer = any;
+  type ProcessEnv = any;
+}
+declare namespace JSX {
+  interface IntrinsicElements { [elemName: string]: any }
+  interface Element {}
+  interface ElementChildrenAttribute { children: {} }
+}
+declare module "*";
+`;
+    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
+      "Date",
+      "Math",
+      "JSON",
+      "Intl",
+      "Reflect",
+      "Proxy",
+      "Symbol",
+      "Object",
+      "Array",
+      "String",
+      "Number",
+      "Boolean",
+      "BigInt",
+      "Function",
+      "RegExp",
+      "Error",
+      "TypeError",
+      "RangeError",
+      "SyntaxError",
+      "ReferenceError",
+      "EvalError",
+      "URIError",
+      "AggregateError",
+      "Map",
+      "Set",
+      "WeakMap",
+      "WeakSet",
+      "WeakRef",
+      "FinalizationRegistry",
+      "Promise",
+      "ArrayBuffer",
+      "SharedArrayBuffer",
+      "DataView",
+      "Int8Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "Int16Array",
+      "Uint16Array",
+      "Int32Array",
+      "Uint32Array",
+      "Float32Array",
+      "Float64Array",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Atomics",
+      "Iterator",
+      "Record",
+      "Partial",
+      "Required",
+      "Readonly",
+      "Pick",
+      "Omit",
+      "Exclude",
+      "Extract",
+      "NonNullable",
+      "ReturnType",
+      "Parameters",
+      "InstanceType",
+      "Awaited",
+      "PropertyKey",
+      "ArrayLike",
+      "PromiseLike",
+      "Iterable",
+      "AsyncIterable",
+      "screen",
+      "innerWidth",
+      "innerHeight",
+      "scrollX",
+      "scrollY",
+      "scrollTo",
+      "matchMedia",
+      "getComputedStyle",
+      "open",
+      "close",
+      "print",
+      "self",
+      "top",
+      "parent",
+      "frames",
+      "customElements",
+      "indexedDB",
+      "caches",
+      "origin",
+      "devicePixelRatio",
+      "speechSynthesis",
+      "Notification",
+      "DOMParser",
+      "XMLHttpRequest",
+      "Option",
+      "Range",
+      "Selection",
+      "ShadowRoot",
+      "DocumentFragment",
+      "DOMRect",
+      "Touch",
+      "EventSource",
+      "BroadcastChannel",
+      "MessageChannel",
+      "PerformanceObserver",
+      "CSS",
+      "CSSStyleDeclaration",
+      "ImageData",
+      "OffscreenCanvas",
+      "ReadableStream",
+      "WritableStream",
+      "TransformStream",
+      "Deno",
+      "Bun",
+      "NodeJS"
+    ]);
+    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
+    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
+  }
+});
+
 // src/server/local-verifier.ts
 function stripNoise(src2) {
   let out = "";
@@ -64967,97 +65345,6 @@ function findUnterminatedString(src2) {
   }
   return null;
 }
-function findUndefinedComponents(src2, clean) {
-  const tags = /* @__PURE__ */ new Set();
-  const n = clean.length;
-  for (let i = 0; i < n; i++) {
-    if (clean[i] !== "<") continue;
-    if (clean[i + 1] === "/") continue;
-    let j = i + 1;
-    const start = j;
-    while (j < n && /[A-Za-z0-9_]/.test(clean[j])) j++;
-    const name = clean.slice(start, j);
-    if (!name || !/^[A-Z]/.test(name)) continue;
-    let p2 = i - 1;
-    while (p2 >= 0 && /\s/.test(clean[p2])) p2--;
-    const prev = p2 >= 0 ? clean[p2] : void 0;
-    if (prev && /[A-Za-z0-9_$\])]/.test(prev)) continue;
-    tags.add(name);
-  }
-  if (tags.size === 0) return [];
-  const declared = /* @__PURE__ */ new Set();
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,?\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  let m;
-  while (m = importRe.exec(src2)) {
-    if (m[1]) declared.add(m[1]);
-    if (m[3]) declared.add(m[3]);
-    if (m[2]) {
-      for (const part of m[2].split(",")) {
-        const name = part.trim().split(/\s+as\s+/i).pop()?.trim();
-        if (name) declared.add(name);
-      }
-    }
-  }
-  const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
-  while (m = declRe.exec(src2)) declared.add(m[1]);
-  const aliasRe = /(?:[:,{(]|\.\.\.)\s*([A-Z][A-Za-z0-9_]*)\s*(?=[,}\]=)])/g;
-  while (m = aliasRe.exec(src2)) declared.add(m[1]);
-  const assignRe = /(?:^|[\s,({[])([A-Z][A-Za-z0-9_]*)\s*=[^=>]/g;
-  while (m = assignRe.exec(src2)) declared.add(m[1]);
-  const builtins = /* @__PURE__ */ new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
-  const missing = [];
-  for (const tag of tags) {
-    if (declared.has(tag)) continue;
-    if (builtins.has(tag)) continue;
-    missing.push(tag);
-  }
-  return missing;
-}
-function findObviousScopeLeaks(src2) {
-  const declared = new Set(BUILTIN_GLOBALS);
-  let m;
-  const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = declRe.exec(src2)) declared.add(m[1]);
-  const destructuredDeclRe = /\b(?:const|let|var)\s+([\[{])([\s\S]{1,500}?)[\]}]\s*=/g;
-  while (m = destructuredDeclRe.exec(src2)) {
-    const binding = m[2].replace(/\b[A-Za-z_$][\w$]*\s*:/g, " ").replace(/=[^,}\]]+/g, " ");
-    for (const name of binding.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
-  }
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  while (m = importRe.exec(src2)) {
-    if (m[1]) declared.add(m[1]);
-    if (m[3]) declared.add(m[3]);
-    if (m[2]) for (const part of m[2].split(",")) {
-      const piece = part.trim().replace(/^type\s+/i, "");
-      const name = piece.split(/\s+as\s+/i).pop()?.trim();
-      if (name) declared.add(name);
-    }
-  }
-  const paramRe = /\(([^)]{1,240})\)\s*(?::\s*[^=]+)?=>|function\s*[A-Za-z_$]*\s*\(([^)]{0,240})\)/g;
-  while (m = paramRe.exec(src2)) {
-    const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
-    for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
-  }
-  const singleArrowParamRe = /(?:^|[,(]\s*)([A-Za-z_$][\w$]*)\s*=>/g;
-  while (m = singleArrowParamRe.exec(src2)) declared.add(m[1]);
-  const clean = stripNoise(maskJsxText(src2)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
-  const missing = [];
-  const seen = /* @__PURE__ */ new Set();
-  const add = (name) => {
-    if (!name || declared.has(name) || seen.has(name)) return;
-    seen.add(name);
-    missing.push(name);
-  };
-  const candidateRes = [
-    /\bArray\s*\.\s*isArray\s*\(\s*([a-z][\w$]*)\s*\)/g,
-    /\b([a-z][\w$]*)\s*(?:&&|\|\||\?\?|,)/g,
-    /(?:^|[({[,])\s*([a-z][\w$]*)\s*[,)]/g
-  ];
-  for (const re of candidateRes) {
-    while (m = re.exec(clean)) add(m[1]);
-  }
-  return missing.slice(0, 8);
-}
 function normalizePath(path) {
   const out = [];
   for (const part of path.split("/")) {
@@ -65097,7 +65384,7 @@ function findLazyNamedExportIssues(files, changedPaths) {
   }
   return issues;
 }
-function verifyFileLocal(path, content) {
+function verifyFileStructure(path, content) {
   if (!SCANNABLE.test(path)) return [];
   const issues = [];
   if (/keep existing code/i.test(content)) {
@@ -65147,23 +65434,24 @@ function verifyFileLocal(path, content) {
       break;
     }
   }
-  const missing = findUndefinedComponents(content, clean);
-  if (missing.length > 0) {
-    issues.push({
-      path,
-      kind: "undefined",
-      detail: `undefined component(s): ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? "\u2026" : ""}`
-    });
-  }
-  const scopeLeaks = findObviousScopeLeaks(content);
-  if (scopeLeaks.length > 0) {
-    issues.push({
-      path,
-      kind: "scope",
-      detail: `references undeclared variable(s): ${scopeLeaks.join(", ")}. Declare them, add them to the component props/destructure, or remove the stale expression before shipping.`
-    });
-  }
   return issues;
+}
+function identifierIssues(files, changed) {
+  const identifiers = checkUndefinedIdentifiers(files, changed);
+  if (identifiers.status === "unavailable") {
+    console.warn("[local-verifier] identifier check unavailable:", identifiers.reason);
+  }
+  return identifiers.issues.map((issue) => {
+    const name = /Cannot find name '([^']+)'/.exec(issue.message)?.[1];
+    return {
+      path: issue.path,
+      kind: name && /^[A-Z]/.test(name) ? "undefined" : "scope",
+      detail: `references undeclared variable(s): ${name ?? issue.message} (line ${issue.line}). ${issue.message}`
+    };
+  });
+}
+function verifyFileLocal(path, content) {
+  return [...verifyFileStructure(path, content), ...identifierIssues([{ path, content }], [path])];
 }
 function findUnresolvedImports(files, changedPaths) {
   const issues = [];
@@ -65613,13 +65901,16 @@ function findAuthLoaderIssues(files, changed) {
 function verifyFilesLocal(files, changedPaths) {
   const changed = new Set(changedPaths);
   const issues = [];
+  const semanticPaths = [];
   for (const f of files) {
     if (!changed.has(f.path)) continue;
     if (f.path.startsWith("src/components/ui/")) continue;
     if (f.path.startsWith("src/integrations/")) continue;
     if (f.path.startsWith("src/components/examples/")) continue;
-    issues.push(...verifyFileLocal(f.path, f.content));
+    issues.push(...verifyFileStructure(f.path, f.content));
+    semanticPaths.push(f.path);
   }
+  issues.push(...identifierIssues(files, semanticPaths));
   issues.push(...findLazyNamedExportIssues(files, changed));
   issues.push(...findUnresolvedImports(files, changed));
   issues.push(...findMissingNamedExports(files, changed));
@@ -65641,108 +65932,14 @@ function usedAsValue(src2, name) {
   ];
   return patterns.some((p2) => new RegExp(p2, "m").test(body));
 }
-var SCANNABLE, BUILTIN_GLOBALS, NODE_BUILTINS;
+var SCANNABLE, NODE_BUILTINS;
 var init_local_verifier = __esm({
   "src/server/local-verifier.ts"() {
     init_define_import_meta_env();
     init_kit_manifest_server();
     init_renderable_shell_server();
+    init_identifiers_server();
     SCANNABLE = /\.(tsx?|jsx?)$/;
-    BUILTIN_GLOBALS = /* @__PURE__ */ new Set([
-      "Array",
-      "Boolean",
-      "Date",
-      "Error",
-      "Intl",
-      "JSON",
-      "Map",
-      "Math",
-      "Number",
-      "Object",
-      "Promise",
-      "React",
-      "RegExp",
-      "Set",
-      "String",
-      "URL",
-      "console",
-      "document",
-      "globalThis",
-      "localStorage",
-      "navigator",
-      "sessionStorage",
-      "window",
-      // JavaScript literals/operators can match the deliberately conservative
-      // lowercase-reference regexes below, but they are never declarations.
-      "undefined",
-      "null",
-      "true",
-      "false",
-      "NaN",
-      "Infinity",
-      // TypeScript type keywords. `Record<string, number>` and `Map<string, Foo>`
-      // put `string`/`number` right before a comma, which the candidate regexes
-      // read as a value reference. Treating them as leaks rolled back otherwise
-      // perfectly valid builds, so they are always in scope.
-      "string",
-      "number",
-      "boolean",
-      "bigint",
-      "symbol",
-      "object",
-      "any",
-      "unknown",
-      "never",
-      "void",
-      "this",
-      "self",
-      // Reserved words and TS modifiers that can appear in the same positions.
-      "typeof",
-      "keyof",
-      "infer",
-      "asserts",
-      "is",
-      "as",
-      "in",
-      "of",
-      "out",
-      "readonly",
-      "declare",
-      "abstract",
-      "satisfies",
-      "extends",
-      "implements",
-      "new",
-      "delete",
-      "await",
-      "yield",
-      "return",
-      "throw",
-      "case",
-      "default",
-      "if",
-      "else",
-      "for",
-      "while",
-      "do",
-      "switch",
-      "break",
-      "continue",
-      "try",
-      "catch",
-      "finally",
-      "export",
-      "import",
-      "from",
-      "async",
-      "static",
-      "public",
-      "private",
-      "protected",
-      "get",
-      "set",
-      "instanceof"
-    ]);
     NODE_BUILTINS = /* @__PURE__ */ new Set([
       "assert",
       "async_hooks",
@@ -70872,6 +71069,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -141424,32 +141622,9 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    init_define_import_meta_env();
-    SOURCE_RX = /\.(tsx|jsx)$/i;
-  }
-});
-
-// src/server/verification/ts-runtime-shim.ts
-var ts_runtime_shim_exports = {};
-__export(ts_runtime_shim_exports, {
-  TS_RUNTIME_READY: () => TS_RUNTIME_READY,
-  installTsRuntimeGlobals: () => installTsRuntimeGlobals
-});
-function installTsRuntimeGlobals() {
-  return install();
-}
-function install() {
-  const g = globalThis;
-  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
-  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
-  return true;
-}
-var TS_RUNTIME_READY;
-var init_ts_runtime_shim = __esm({
-  "src/server/verification/ts-runtime-shim.ts"() {
     "use strict";
     init_define_import_meta_env();
-    TS_RUNTIME_READY = install();
+    SOURCE_RX = /\.(tsx|jsx)$/i;
   }
 });
 
@@ -142942,6 +143117,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143209,7 +143385,7 @@ __export(write_gate_server_exports, {
   writeGateDisclosure: () => writeGateDisclosure
 });
 function parseCandidates(changedPaths) {
-  return changedPaths.filter((p2) => PARSEABLE.test(p2) && !isVerifierExempt(p2));
+  return changedPaths.filter((p2) => PARSEABLE2.test(p2) && !isVerifierExempt(p2));
 }
 function healOne(file) {
   let out = [file];
@@ -143360,7 +143536,7 @@ async function revertCleanupBreakage(before, after, paths) {
     reverted
   };
 }
-var PARSEABLE;
+var PARSEABLE2;
 var init_write_gate_server = __esm({
   "src/server/write-gate.server.ts"() {
     init_define_import_meta_env();
@@ -143372,7 +143548,7 @@ var init_write_gate_server = __esm({
     init_scaffold_ownership_server();
     init_recovery_policy();
     init_recovery_policy();
-    PARSEABLE = /\.(tsx?|jsx?|mts|cts)$/i;
+    PARSEABLE2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
 });
 
@@ -143419,6 +143595,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -145270,6 +145447,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -146474,6 +146652,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -147532,14 +147711,15 @@ function buildExecutionScope(args) {
   const pagesSet = new Set(manifest?.pages.map((p2) => p2.path) ?? []);
   const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
   const chromeNamed = CHROME_WORDS.test(request);
+  const repairing = args.repair || classification.operation === "repair";
   const reason = (p2) => {
-    if (wide || targets.includes(p2)) return null;
+    if (wide || targets.includes(p2) || repairing && neighbours.includes(p2)) return null;
     if (CHROME_RE.test(p2) && !chromeNamed) return "shared navigation/layout was not part of this request";
     if (pagesSet.has(p2) && !neighbours.includes(p2)) return "a different page than the one requested";
     return null;
   };
   const protectedAreas = wide ? [] : [
-    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
+    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l) && !(repairing && neighbours.includes(l))),
     ...[...pagesSet].filter((p2) => !targets.includes(p2) && !neighbours.includes(p2))
   ];
   return {
@@ -154293,359 +154473,6 @@ var init_missing_import_repair = __esm({
   }
 });
 
-// src/server/verification/identifiers.server.ts
-var identifiers_server_exports = {};
-__export(identifiers_server_exports, {
-  IDENTIFIER_CHECK_BUDGET_MS: () => IDENTIFIER_CHECK_BUDGET_MS,
-  checkUndefinedIdentifiers: () => checkUndefinedIdentifiers,
-  isPlatformGlobal: () => isPlatformGlobal
-});
-import ts from "typescript";
-function isPlatformGlobal(name) {
-  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
-}
-function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
-  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
-  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
-  if (targets.length === 0) return { status: "verified", issues: [] };
-  const now = opts.now ?? (() => Date.now());
-  const started = now();
-  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
-  try {
-    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
-    const options = {
-      noEmit: true,
-      noLib: true,
-      allowJs: true,
-      checkJs: false,
-      jsx: ts.JsxEmit.ReactJSX,
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      skipLibCheck: true,
-      types: []
-      // React 17+ JSX transform: tag names are not value identifiers, so
-      // untyped JSX never produces a TS2304 false positive.
-    };
-    const host = {
-      getSourceFile: (name, languageVersion) => {
-        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
-        if (content === void 0) return void 0;
-        return ts.createSourceFile(name, content, languageVersion, true);
-      },
-      getDefaultLibFileName: () => AMBIENT_PATH,
-      writeFile: () => {
-      },
-      getCurrentDirectory: () => "/",
-      getDirectories: () => [],
-      getCanonicalFileName: (f) => f,
-      useCaseSensitiveFileNames: () => true,
-      getNewLine: () => "\n",
-      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
-      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
-    };
-    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
-    const wanted = new Set(targets.map((p2) => `/${p2}`));
-    const seen = /* @__PURE__ */ new Set();
-    const issues = [];
-    const diagnostics = [];
-    for (const path of wanted) {
-      const sf = program.getSourceFile(path);
-      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
-      diagnostics.push(...program.getSemanticDiagnostics(sf));
-      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
-    }
-    for (const d of diagnostics) {
-      if (d.code !== CANNOT_FIND_NAME) continue;
-      const file = d.file?.fileName;
-      if (!file || !wanted.has(file)) continue;
-      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
-      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
-      if (name && isPlatformGlobal(name)) continue;
-      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
-      const key = `${file}::${message}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
-      issues.push({ path: file.slice(1), line: line + 1, message });
-    }
-    return { status: issues.length ? "failed" : "verified", issues };
-  } catch (e) {
-    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
-    console.warn("[identifier-gate] unavailable:", reason);
-    return { status: "unavailable", issues: [], reason };
-  }
-}
-function inTypePosition(ts2, sf, pos) {
-  let hit;
-  const visit = (n) => {
-    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
-      hit = n;
-      ts2.forEachChild(n, visit);
-    }
-  };
-  ts2.forEachChild(sf, visit);
-  for (let n = hit; n; n = n.parent) {
-    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
-    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
-    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
-  }
-  return false;
-}
-var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
-var init_identifiers_server = __esm({
-  "src/server/verification/identifiers.server.ts"() {
-    init_define_import_meta_env();
-    init_ts_runtime_shim();
-    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
-    CANNOT_FIND_NAME = 2304;
-    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
-    AMBIENT_GLOBALS = `
-declare var console: any;
-declare var window: any;
-declare var document: any;
-declare var navigator: any;
-declare var location: any;
-declare var history: any;
-declare var localStorage: any;
-declare var sessionStorage: any;
-declare var fetch: any;
-declare var setTimeout: any;
-declare var setInterval: any;
-declare var clearTimeout: any;
-declare var clearInterval: any;
-declare var setImmediate: any;
-declare var clearImmediate: any;
-declare var requestAnimationFrame: any;
-declare var cancelAnimationFrame: any;
-declare var requestIdleCallback: any;
-declare var queueMicrotask: any;
-declare var structuredClone: any;
-declare var alert: any;
-declare var confirm: any;
-declare var prompt: any;
-declare var atob: any;
-declare var btoa: any;
-declare var crypto: any;
-declare var performance: any;
-declare var globalThis: any;
-declare var process: any;
-declare var Buffer: any;
-declare var module: any;
-declare var require: any;
-declare var exports: any;
-declare var __dirname: any;
-declare var __filename: any;
-declare var global: any;
-declare var undefined: undefined;
-declare var NaN: number;
-declare var Infinity: number;
-declare var parseInt: any;
-declare var parseFloat: any;
-declare var isNaN: any;
-declare var isFinite: any;
-declare var encodeURI: any;
-declare var decodeURI: any;
-declare var encodeURIComponent: any;
-declare var decodeURIComponent: any;
-declare type Console = any;
-declare type Window = any;
-declare type Document = any;
-declare type Navigator = any;
-declare type Storage = any;
-declare type Response = any;
-declare type Request = any;
-declare type Headers = any;
-declare type URL = any;
-declare type URLSearchParams = any;
-declare type FormData = any;
-declare type Blob = any;
-declare type File = any;
-declare type FileReader = any;
-declare type Event = any;
-declare type EventTarget = any;
-declare type CustomEvent = any;
-declare type KeyboardEvent = any;
-declare type MouseEvent = any;
-declare type PointerEvent = any;
-declare type TouchEvent = any;
-declare type DragEvent = any;
-declare type FocusEvent = any;
-declare type InputEvent = any;
-declare type SubmitEvent = any;
-declare type AnimationEvent = any;
-declare type TransitionEvent = any;
-declare type WheelEvent = any;
-declare type ClipboardEvent = any;
-declare type MediaQueryList = any;
-declare type HTMLElement = any;
-declare type HTMLInputElement = any;
-declare type HTMLTextAreaElement = any;
-declare type HTMLSelectElement = any;
-declare type HTMLFormElement = any;
-declare type HTMLAnchorElement = any;
-declare type HTMLButtonElement = any;
-declare type HTMLImageElement = any;
-declare type HTMLVideoElement = any;
-declare type HTMLCanvasElement = any;
-declare type HTMLDivElement = any;
-declare type HTMLSpanElement = any;
-declare type SVGElement = any;
-declare type SVGSVGElement = any;
-declare type Element = any;
-declare type Node = any;
-declare type NodeList = any;
-declare type NodeListOf<T> = any;
-declare type MutationObserver = any;
-declare type ResizeObserver = any;
-declare type ResizeObserverEntry = any;
-declare type IntersectionObserver = any;
-declare type IntersectionObserverEntry = any;
-declare type AbortController = any;
-declare type AbortSignal = any;
-declare type TextEncoder = any;
-declare type TextDecoder = any;
-declare type WebSocket = any;
-declare type Worker = any;
-declare type Image = any;
-declare type Audio = any;
-declare type Geolocation = any;
-declare type CanvasRenderingContext2D = any;
-declare type WebGLRenderingContext = any;
-declare type RequestInit = any;
-declare type ResponseInit = any;
-declare type HeadersInit = any;
-declare type BodyInit = any;
-declare type Timer = any;
-declare type Timeout = any;
-declare namespace NodeJS {
-  type Timeout = any;
-  type Timer = any;
-  type ProcessEnv = any;
-}
-declare namespace JSX {
-  interface IntrinsicElements { [elemName: string]: any }
-  interface Element {}
-  interface ElementChildrenAttribute { children: {} }
-}
-declare module "*";
-`;
-    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
-      "Date",
-      "Math",
-      "JSON",
-      "Intl",
-      "Reflect",
-      "Proxy",
-      "Symbol",
-      "Object",
-      "Array",
-      "String",
-      "Number",
-      "Boolean",
-      "BigInt",
-      "Function",
-      "RegExp",
-      "Error",
-      "TypeError",
-      "RangeError",
-      "SyntaxError",
-      "ReferenceError",
-      "EvalError",
-      "URIError",
-      "AggregateError",
-      "Map",
-      "Set",
-      "WeakMap",
-      "WeakSet",
-      "WeakRef",
-      "FinalizationRegistry",
-      "Promise",
-      "ArrayBuffer",
-      "SharedArrayBuffer",
-      "DataView",
-      "Int8Array",
-      "Uint8Array",
-      "Uint8ClampedArray",
-      "Int16Array",
-      "Uint16Array",
-      "Int32Array",
-      "Uint32Array",
-      "Float32Array",
-      "Float64Array",
-      "BigInt64Array",
-      "BigUint64Array",
-      "Atomics",
-      "Iterator",
-      "Record",
-      "Partial",
-      "Required",
-      "Readonly",
-      "Pick",
-      "Omit",
-      "Exclude",
-      "Extract",
-      "NonNullable",
-      "ReturnType",
-      "Parameters",
-      "InstanceType",
-      "Awaited",
-      "PropertyKey",
-      "ArrayLike",
-      "PromiseLike",
-      "Iterable",
-      "AsyncIterable",
-      "screen",
-      "innerWidth",
-      "innerHeight",
-      "scrollX",
-      "scrollY",
-      "scrollTo",
-      "matchMedia",
-      "getComputedStyle",
-      "open",
-      "close",
-      "print",
-      "self",
-      "top",
-      "parent",
-      "frames",
-      "customElements",
-      "indexedDB",
-      "caches",
-      "origin",
-      "devicePixelRatio",
-      "speechSynthesis",
-      "Notification",
-      "DOMParser",
-      "XMLHttpRequest",
-      "Option",
-      "Range",
-      "Selection",
-      "ShadowRoot",
-      "DocumentFragment",
-      "DOMRect",
-      "Touch",
-      "EventSource",
-      "BroadcastChannel",
-      "MessageChannel",
-      "PerformanceObserver",
-      "CSS",
-      "CSSStyleDeclaration",
-      "ImageData",
-      "OffscreenCanvas",
-      "ReadableStream",
-      "WritableStream",
-      "TransformStream",
-      "Deno",
-      "Bun",
-      "NodeJS"
-    ]);
-    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
-    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
-  }
-});
-
 // src/server/engine/tool-loop.ts
 var tool_loop_exports = {};
 __export(tool_loop_exports, {
@@ -156741,7 +156568,7 @@ async function verifyProposedSource(args) {
   let semantic = { status: "not_run" };
   if (esbuild2 && (esbuild2.status === "passed" || esbuild2.status === "not_checked")) {
     const check = checkUndefinedIdentifiers(args.tree, parseable);
-    const identifierIssues = check.issues;
+    const identifierIssues2 = check.issues;
     semantic = { status: check.status, ...check.reason ? { reason: check.reason } : {} };
     if (check.status === "failed") {
       merged = {
@@ -156750,7 +156577,7 @@ async function verifyProposedSource(args) {
         ok: false,
         issues: [
           ...esbuild2.issues ?? [],
-          ...identifierIssues.map((i) => ({
+          ...identifierIssues2.map((i) => ({
             path: i.path,
             line: i.line,
             column: 0,
@@ -165512,11 +165339,14 @@ function asRecord(row) {
 async function openTurnCompletion(args) {
   try {
     let attempts = args.inheritAttempts ?? 0;
+    let previous = null;
     if (args.isAutoFix) {
-      const previous = await loadOpenCompletion(args.projectId);
+      previous = await loadOpenCompletion(args.projectId);
       if (previous && previous.turn_id !== args.turnId) {
-        const spent = previous.stage === "needs_repair" || previous.stage === "repairing" ? previous.attempts + 1 : previous.attempts;
+        const spent = previous.stage === "needs_repair" ? previous.attempts + 1 : previous.attempts;
         attempts = Math.max(attempts, spent);
+      } else if (previous) {
+        attempts = Math.max(attempts, previous.attempts);
       }
     }
     await supabaseAdmin.from("project_turn_completion").update({ stage: "superseded", terminal_reason: "a newer request took over" }).eq("project_id", args.projectId).neq("turn_id", args.turnId).not("stage", "in", `(${TERMINAL2.join(",")})`);
@@ -165527,7 +165357,13 @@ async function openTurnCompletion(args) {
         turn_id: args.turnId,
         stage: "generating",
         attempts,
-        outstanding_defects: [],
+        max_attempts: previous?.max_attempts ?? MAX_COMPLETION_ATTEMPTS,
+        // Preserve the defect identity across autonomous turn ids. Otherwise
+        // recordBuildOutcome cannot detect an unchanged failed repair.
+        outstanding_defects: previous?.outstanding_defects ?? [],
+        defect_fingerprint: previous?.defect_fingerprint ?? null,
+        last_build_id: previous?.last_build_id ?? null,
+        evidence: previous?.evidence ?? [],
         terminal_reason: null,
         resume_after: null
       },
@@ -173688,7 +173524,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -177858,6 +177693,10 @@ function buildEditBoundary(args) {
   if (targets.length === 0) return OPEN2;
   if (targets.length > 8) return OPEN2;
   const allowed = new Set(targets);
+  if (args.repair) {
+    for (const path of args.neighbourPaths ?? []) allowed.add(path);
+    if (args.existingPaths.includes("src/styles.css")) allowed.add("src/styles.css");
+  }
   if (args.allowNewPages) {
     for (const p2 of args.existingPaths) if (/^src\/(App|main|router)\.(t|j)sx?$/.test(p2)) allowed.add(p2);
   }
@@ -177865,12 +177704,12 @@ function buildEditBoundary(args) {
   const isPageFile = (p2) => /^src\/(pages|routes)\//.test(p2);
   return {
     enforced: true,
-    targets,
+    targets: [...allowed],
     // A path that does not exist yet is a new file — allowed, because a small
     // edit can legitimately introduce one component. Rewriting a file that
     // already exists and was never part of the ask is what we stop.
     allows: (path) => allowed.has(path) || !existing.has(path) && (args.allowNewPages || !isPageFile(path)),
-    describe: () => `${args.scope} edit may write ${targets.join(", ")}${(args.neighbourPaths?.length ?? 0) > 0 ? ` (reads ${args.neighbourPaths.length} neighbour(s), writes none)` : ""}`
+    describe: () => `${args.scope} edit may write ${[...allowed].join(", ")}${(args.neighbourPaths?.length ?? 0) > 0 ? ` (reads ${args.neighbourPaths?.length ?? 0} neighbour(s)${args.repair ? ", repair dependencies writable" : ", writes none"})` : ""}`
   };
 }
 
@@ -180524,7 +180363,8 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     classification: turnClassification,
     manifest: projectCtx.manifest,
     targets: resolvedTargetPaths,
-    neighbours: impactNeighbourPaths
+    neighbours: impactNeighbourPaths,
+    repair: isRepairTurn
   });
   const executionScopeBlockBase = isInitial ? "" : renderScopeBlock2(executionScope);
   const { initialDepth: initialDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
@@ -182128,6 +181968,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
             neighbourPaths: impactNeighbourPaths,
             existingPaths: currentFiles.map((f) => f.path),
             disabled: isInitial || isCrossCutting,
+            repair: isRepairTurn,
             allowNewPages: /\b(add|create|build|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent)
           });
           if (editBoundary.enforced) {

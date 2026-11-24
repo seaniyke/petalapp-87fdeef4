@@ -36,7 +36,12 @@ import { adminApi, fmtUsd, fmtDate, fmtRelative } from "@/lib/admin-api";
 export const Route = createFileRoute("/admin/users")({
   head: () => ({
     meta: [
-      { title: "Admin · Users" },
+      { title: "Petal \u00b7 Users" },
+      { name: "description", content: "Private Petal operator view for users." },
+      { property: "og:title", content: "Petal \u00b7 Users" },
+      { property: "og:description", content: "Private Petal operator view for users." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

@@ -49,6 +49,8 @@ export function buildEditBoundary(args: {
   existingPaths: string[];
   /** Cross-cutting redesigns and first builds are never constrained. */
   disabled?: boolean;
+  /** Evidence-led repairs may fix shared dependencies and global layout CSS. */
+  repair?: boolean;
   /** The request asked for a new page/route. Otherwise new page files are out of scope. */
   allowNewPages?: boolean;
 }): EditBoundary {
@@ -64,6 +66,10 @@ export function buildEditBoundary(args: {
   // may READ, never files it may rewrite. Only the resolved targets (plus the
   // router entry when the request adds a page) are writable.
   const allowed = new Set<string>(targets);
+  if (args.repair) {
+    for (const path of args.neighbourPaths ?? []) allowed.add(path);
+    if (args.existingPaths.includes("src/styles.css")) allowed.add("src/styles.css");
+  }
   if (args.allowNewPages) {
     for (const p of args.existingPaths) if (/^src\/(App|main|router)\.(t|j)sx?$/.test(p)) allowed.add(p);
   }
@@ -72,16 +78,16 @@ export function buildEditBoundary(args: {
 
   return {
     enforced: true,
-    targets,
+    targets: [...allowed],
     // A path that does not exist yet is a new file — allowed, because a small
     // edit can legitimately introduce one component. Rewriting a file that
     // already exists and was never part of the ask is what we stop.
     allows: (path: string) =>
       allowed.has(path) || (!existing.has(path) && (args.allowNewPages || !isPageFile(path))),
     describe: () =>
-      `${args.scope} edit may write ${targets.join(", ")}${
+      `${args.scope} edit may write ${[...allowed].join(", ")}${
         (args.neighbourPaths?.length ?? 0) > 0
-          ? ` (reads ${args.neighbourPaths!.length} neighbour(s), writes none)`
+          ? ` (reads ${args.neighbourPaths?.length ?? 0} neighbour(s)${args.repair ? ", repair dependencies writable" : ", writes none"})`
           : ""
       }`,
   };

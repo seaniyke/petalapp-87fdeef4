@@ -43,7 +43,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export const Route = createFileRoute("/admin/billing")({
   head: () => ({
     meta: [
-      { title: "Admin · Billing settings" },
+      { title: "Petal \u00b7 Billing settings" },
+      { name: "description", content: "Private Petal operator view for billing settings." },
+      { property: "og:title", content: "Petal \u00b7 Billing settings" },
+      { property: "og:description", content: "Private Petal operator view for billing settings." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

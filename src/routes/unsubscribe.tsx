@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 type Phase = "loading" | "ready" | "already" | "invalid" | "submitting" | "done" | "error";
 
 export const Route = createFileRoute("/unsubscribe")({
+  head: () => ({
+    meta: [
+      { title: "Email preferences — Petal" },
+      { name: "description", content: "Manage your Petal email preferences." },
+      { property: "og:title", content: "Email preferences — Petal" },
+      { property: "og:description", content: "Manage your Petal email preferences." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: UnsubscribePage,
   validateSearch: (s: Record<string, unknown>) => ({
     token: typeof s.token === "string" ? s.token : "",

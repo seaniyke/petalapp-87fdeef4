@@ -19,7 +19,11 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/admin/test-lab")({
   head: () => ({
     meta: [
-      { title: "Admin · Test Lab" },
+      { title: "Petal \u00b7 Test Lab" },
+      { property: "og:title", content: "Petal \u00b7 Test Lab" },
+      { property: "og:description", content: "Private Petal operator view for test lab." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Internal view of Kimble Test Lab runs across projects." },
       { name: "robots", content: "noindex, nofollow" },
     ],
