@@ -71474,7 +71474,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141620,7 +141619,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -142684,7 +142682,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -142849,7 +142846,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -142893,7 +142889,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -146649,6 +146644,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -147160,10 +147156,15 @@ function deriveProductSurface(brief, roles = []) {
   if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
   return "app";
 }
+function requiredPages(named, surface) {
+  const requested = surface === "public+app" ? [...PUBLIC_PAGES, p("/dashboard", "Dashboard"), ...named] : surface === "app" ? [p("/", "Dashboard"), ...named] : named;
+  return requested.filter((pg, i) => requested.findIndex((x) => x.route === pg.route) === i);
+}
 function deriveIntentContract(brief, prd) {
-  const text = withoutNegatedAppWords(brief || "");
+  const text = withoutNegatedAppWords(positiveRequirementText(brief || ""));
+  const named = extractRequestedPages(text).map((label2) => p(pageNameToRoute(label2), label2));
   const commerceFamily = FAMILIES2.find((f) => f.id === "commerce");
-  const commerceRequested = commerceFamily.triggers.test(text);
+  const commerceRequested = commerceFamily?.triggers.test(text) ?? false;
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
   const aestheticClinic = AESTHETIC_CLINIC.test(text) && !HOSPITAL_ONLY.test(text);
   const familyText = commerceRequested ? text.replace(INCIDENTAL_DELIVERY, " ") : text;
@@ -147179,13 +147180,13 @@ function deriveIntentContract(brief, prd) {
       roles: prd?.roles ?? [],
       entities: (prd?.dataModel ?? []).map((e) => e.name),
       workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
-      pages: [],
+      pages: requiredPages(named, surface2),
       exclusions,
       commerceRequested,
       surface: surface2
     };
   }
-  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, family.roles) : null;
+  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, named.length ? prd?.roles ?? [] : family.roles) : null;
   if (surface === "public") {
     return {
       archetype: family.id,
@@ -147195,22 +147196,23 @@ function deriveIntentContract(brief, prd) {
       roles: [],
       entities: [],
       workflows: [],
-      pages: [],
+      pages: named,
       exclusions,
       commerceRequested,
       surface
     };
   }
-  const pages = surface === "public+app" ? [...PUBLIC_PAGES, ...family.pages.map((pg) => pg.route === "/" ? p("/dashboard", pg.label) : pg)] : family.pages;
+  const pages = requiredPages(named, surface);
   return {
     archetype: family.id,
     label: family.label,
     domain: prd?.domain || family.label,
     productType: family.productType,
-    roles: family.roles,
-    entities: family.entities,
-    workflows: family.workflows,
+    roles: prd?.roles ?? [],
+    entities: (prd?.dataModel ?? []).map((e) => e.name),
+    workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
     pages,
+    ...named.length ? {} : { suggestions: { pages: family.pages, entities: family.entities, workflows: family.workflows } },
     exclusions,
     commerceRequested,
     surface
@@ -147227,7 +147229,6 @@ function divergentPages(contract, routes, brief) {
   for (const r of routes) {
     if (contractRoutes.has(r) || briefMentions(r)) continue;
     if (COMMERCE_PAGE.test(r)) out.push(r);
-    else if (contract.archetype && contract.pages.length && !ALWAYS_ALLOWED.test(r)) out.push(r);
     else if (COMMERCE_ORDERS.test(r) && routes.some((x) => COMMERCE_PAGE.test(x))) out.push(r);
   }
   return out;
@@ -147239,11 +147240,12 @@ function renderIntentBlock(c) {
 
 ### Product contract (authoritative \u2014 do not drift)`,
     c.surface ? SURFACE_LINE[c.surface] : "",
-    c.archetype ? `Product: ${c.label}${c.domain && c.domain !== c.label ? ` (${c.domain})` : ""}.` : "",
+    c.archetype ? `Domain reference: ${c.label}. This is context, not a template or a required feature list. The user's product and workflows win.` : "",
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
     c.workflows.length ? `Primary workflows: ${c.workflows.join("; ")}.` : "",
     c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}. One route per page \u2014 no duplicate routes and no extra navigation-only pages (e.g. a Menu page repeating the sidebar).` : "",
+    c.suggestions ? `Optional domain examples (use only where the request needs them, never add to a specified scope): ${c.suggestions.pages.map((x) => x.label).join(", ")}. A vague brief may need relevant concepts; an explicit brief must not acquire unrelated modules.` : "",
     c.exclusions.length ? `OUT OF SCOPE \u2014 never add: ${c.exclusions.join(", ")}.` : ""
   ].filter(Boolean).join("\n");
 }
@@ -147265,20 +147267,10 @@ function applyIntentContract(prd, brief, now = (/* @__PURE__ */ new Date()).toIS
   }
   if (c.productType === "workflow-app") {
     const keep = (next.requiredSurfaces ?? prd.requiredSurfaces).filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
-    next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...keep, "dashboard", "settings"]));
+    next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...keep, "dashboard"]));
     next.excludedSurfaces = Array.from(/* @__PURE__ */ new Set([...prd.excludedSurfaces.filter((s) => s !== "dashboard"), ...c.commerceRequested ? [] : ["checkout", "catalog"]]));
   }
   if (!prd.roles?.length) next.roles = c.roles;
-  if (!prd.dataModel?.length) {
-    next.dataModel = c.entities.map((name) => ({
-      name,
-      fields: [],
-      operations: ["create", "read", "update", "delete"],
-      visibility: "role",
-      allowedRoles: c.roles.slice(0, 2),
-      relationships: []
-    }));
-  }
   if (c.exclusions.length) next.outOfScope = Array.from(/* @__PURE__ */ new Set([...prd.outOfScope ?? [], ...c.exclusions]));
   const reqs = [...prd.requirements ?? []];
   const have = new Set(reqs.map((r) => r.id));
@@ -147319,10 +147311,12 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES2, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PRODUCT_IS_SITE, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, INCIDENTAL_DELIVERY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES2, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PRODUCT_IS_SITE, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, INCIDENTAL_DELIVERY, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
+    init_requested_scope();
+    init_prd_requirements();
     p = (route, label2) => ({ route, label: label2 });
     FAMILIES2 = [
       {
@@ -147441,12 +147435,11 @@ var init_intent_contract = __esm({
     EXTERNAL_APP = /\b(?:(?:opens?|launch(?:es)?|in|via|using|through|from)\s+(?:the\s+|a\s+|their\s+|your\s+)?|(?:the\s+)?(?:visitor|user|customer|guest|reader|client)s?'?s?\s+|(?:their|your)\s+(?:own\s+)?)(?:default\s+)?(?:e-?mail|mail|maps?|phone|calendar|messaging|sms|texting|camera|wallet|banking|whatsapp|telegram)\s+apps?\b/gi;
     PUBLIC_PAGES = [p("/", "Home"), p("/login", "Sign in")];
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
-    COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
+    COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|wishlist)(\b|\/|$)/i;
     COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
     AESTHETIC_CLINIC = /\b(aesthetics?|cosmetic|med ?spas?|medspas?|skin ?care|skincare|wellness|beauty|laser|facials?|dermal fillers?|botox|hydrafacial)\b/i;
     HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical records?|prescriptions?|pharmacy|nurs(e|es|ing))\b/i;
     INCIDENTAL_DELIVERY = /\b(?:(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep|standard)\s+)?deliver(?:y|ies)\s+(?:fees?|charges?|costs?|prices?|address(?:es)?|options?|times?|dates?|details?|info(?:rmation)?|zones?|areas?|methods?|estimates?)\b|\b(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep)\s+deliver(?:y|ies)\b/gi;
-    ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
     SURFACE_LINE = {
       public: "Structure: a public website only \u2014 header navigation and a footer, no sign-in area or dashboard.",
       app: "Structure: an application only \u2014 the app shell (sidebar or top bar) on every page, no marketing landing page.",
@@ -153290,10 +153283,14 @@ var plan_exports = {};
 __export(plan_exports, {
   pageFileFor: () => pageFileFor,
   planFirstBuild: () => planFirstBuild,
-  planProductStage: () => planProductStage
+  planProductStage: () => planProductStage,
+  reconcileResumedPlan: () => reconcileResumedPlan
 });
 function planProductStage(requirements, brief, isFirstBuild) {
   return stageForTurn(requirements, brief, isFirstBuild);
+}
+function reconcileResumedPlan(current2, saved) {
+  return current2.map((page) => saved.find((old) => old.route === page.route) ?? page);
 }
 function pageFileFor(route) {
   const seg = route.replace(/^\//, "").split("/")[0] || "home";
@@ -154477,6 +154474,31 @@ var init_missing_import_repair = __esm({
 });
 
 // src/server/engine/secondary-work.ts
+function routinePageWork(page, brief) {
+  if (["/", "/dashboard"].includes(page.route)) return null;
+  const label2 = page.route.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? "";
+  const escaped = label2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const detail = brief.match(new RegExp(`(?:^|[\\n;,])\\s*(?:[-*\u2022]\\s*)?${escaped}\\s*(?:[:\u2014\u2013]|\\()([^\\n;]*?)(?:\\)|$)`, "im"))?.[1] ?? "";
+  const complex = /\b(auth(?:entication|orization)?|permissions?|schema|migration|payments?|checkout|book(?:ing)?|state.machine|workflow|webhook|write.api|mutations?|create|add|edit|update|delete|submit|upload|send|form|interactive|calculator|chat|manage)\b/i;
+  const namedClauses = brief.split(/[.\n;]/).filter((s) => new RegExp(`\\b${escaped}\\s+page\\b`, "i").test(s));
+  if (complex.test(detail) || namedClauses.some((s) => complex.test(s))) return null;
+  const informational = /^(about(?: us)?|story|faq|help|privacy|terms|team|testimonials)$/i.test(label2);
+  const readOnly = /\b(read.only|view.only|display.only)\b/i.test(detail) && /\b(list|table|directory)\b/i.test(detail);
+  if (!informational && !readOnly) return null;
+  return { path: page.file, kind: readOnly ? "read_only_list" : "informational", task: `Implement the requested ${label2} page. ${detail} Preserve every relevant detail of the original brief and the committed design; consume existing shared functionality.` };
+}
+function nextRoutineWork(pages, brief, ev, attempted) {
+  const foundations = [...ev.files].filter(([path]) => path.startsWith("src/") && !path.startsWith("src/pages/") && !/^src\/(App|main)\.[jt]sx?$/.test(path));
+  if (!foundations.length || foundations.some(([path, content]) => !ev.validation.has(path) || ev.validation.get(path)?.length || ev.validatedHash.get(path) !== ev.hash(content))) return null;
+  for (const page of pages) {
+    if (attempted.has(page.file) || ev.files.get(page.file)?.trim()) continue;
+    const spec = routinePageWork(page, brief);
+    if (!spec) continue;
+    const work = { ...spec, dependencies: foundations.map(([path]) => path) };
+    if (!secondaryWorkRefusal(work, ev)) return work;
+  }
+  return null;
+}
 function secondaryWorkRefusal(work, ev) {
   const page = ev.pages.find((p2) => p2.file === work.path);
   if (!page || !/^src\/pages\/[\w/-]+\.tsx$/.test(work.path)) return "Use the frontier model for unplanned or shared files.";
@@ -155024,6 +155046,16 @@ ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and 
     return next;
   };
   const attemptedSecondary = /* @__PURE__ */ new Set();
+  const automaticWork = () => args.light ? null : nextRoutineWork(args.secondaryPages ?? [], args.goal, { pages: args.secondaryPages ?? [], files: tree, validation: state.validation, validatedHash: state.validatedHash, hash }, attemptedSecondary);
+  const reserved = (args.light ? [] : args.secondaryPages ?? []).filter((p2) => routinePageWork(p2, args.goal));
+  const releaseUnprovableWork = () => {
+    const missing = reserved.filter((p2) => !attemptedSecondary.has(p2.file) && !tree.get(p2.file)?.trim());
+    if (!missing.length) return null;
+    for (const p2 of missing) attemptedSecondary.add(p2.file);
+    emit({ kind: "secondary_frontier_fallback", detail: missing.map((p2) => p2.file).join(", ") });
+    return `No clean shared dependency proof is available for ${missing.map((p2) => p2.file).join(", ")}. Frontier owns these pages now; implement them without reducing scope.`;
+  };
+  if (reserved.length) messages.push({ role: "user", content: `Execution phases: write the shared foundations and core/complex pages first. Petal automatically schedules these routine pages on the fast model once shared dependencies validate: ${reserved.map((p2) => p2.file).join(", ")}. Supply shared layout/data exports for them; do not write their contents yourself. You then resume to review every result and implement any complex behaviour. A failed or insufficient fast step returns to you, never removes a requested feature.` });
   async function exec(call) {
     const name = call.function.name;
     if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
@@ -155036,6 +155068,9 @@ ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and 
     const path = normPath(a2.path);
     if (activeSecondary && !READ_ONLY.has(name) && !(["create_file", "edit_file"].includes(name) && path === activeSecondary.path)) {
       return { output: `This step only writes ${activeSecondary.path}; frontier resumes for ${name}${path ? ` on ${path}` : ""}.`, isError: true };
+    }
+    if (!activeSecondary && name === "create_file" && !attemptedSecondary.has(path) && !tree.get(path)?.trim() && reserved.some((p2) => p2.file === path)) {
+      return { output: `Scheduled routine page ${path}: write and validate its shared dependencies first; Petal performs its fast step automatically, then returns review and any complex work to you.`, isError: false };
     }
     switch (name) {
       case "focus_secondary_page": {
@@ -155212,7 +155247,10 @@ ${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, 
         return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
+        if (!pendingSecondary) pendingSecondary = automaticWork();
         if (pendingSecondary) return { output: "Complete the pending secondary page before finish.", isError: true };
+        const fallback = releaseUnprovableWork();
+        if (fallback) return { output: fallback, isError: false };
         const notReady = await finishGate();
         if (notReady) {
           sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
@@ -155262,7 +155300,8 @@ ${notReady}`, isError: true };
       readSeen.clear();
       compacted = true;
     }
-    activeSecondary = takeSecondary();
+    const reviewingSecondary = activeSecondary !== null;
+    activeSecondary = takeSecondary() ?? (reviewingSecondary ? null : automaticWork());
     if (activeSecondary) {
       const refusal = secondaryWorkRefusal(activeSecondary, { pages: args.secondaryPages ?? [], files: tree, validation: state.validation, validatedHash: state.validatedHash, hash });
       if (refusal) activeSecondary = null;
@@ -155345,7 +155384,8 @@ ${notReady}`, isError: true };
     if (reply.toolCalls.length === 0 && activeSecondary) {
       messages.push({ role: "user", content: "Frontier resumes: the routine step returned without writing; complete this page yourself." });
     } else if (reply.toolCalls.length === 0) {
-      const notReady = await finishGate();
+      pendingSecondary = automaticWork();
+      const notReady = pendingSecondary ? "Complete the automatically scheduled routine page before finishing." : releaseUnprovableWork() ?? await finishGate();
       if (!notReady) state.finished = true;
       else messages.push({ role: "user", content: `You stopped, but:
 ${notReady}` });
@@ -180710,7 +180750,7 @@ The latest request contains multiple coordinated asks. Treat this as one complet
   if (isInitial) {
     try {
       const { deriveIntentContract: deriveIntentContract2, divergentPages: divergentPages2, renderIntentBlock: renderIntentBlock2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
-      intentContract = resolvedPrd?.prd.intent ?? deriveIntentContract2(lastUserText, resolvedPrd?.prd ?? null);
+      intentContract = deriveIntentContract2(lastUserText, resolvedPrd?.prd ?? null);
       const bad = divergentPages2(intentContract, plannedRoutes, lastUserText);
       if (bad.length) {
         console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
@@ -180719,15 +180759,7 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       }
       if (intentContract.pages.length) {
         const core = intentContract.pages.map((pg) => pg.route);
-        const lowerAsk = lastUserText.toLowerCase();
-        for (const r of [...plannedRoutes]) {
-          const segs = r.split("/").filter(Boolean);
-          if (segs.length > 1 && segs[0] !== "auth" && !core.includes(r) && !lowerAsk.includes(segs[segs.length - 1].replace(/^\$/, ""))) {
-            plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
-          }
-        }
-        const covered = core.filter((r) => plannedRoutes.includes(r)).length;
-        if (covered * 2 < core.length) {
+        if (core.some((r) => !plannedRoutes.includes(r))) {
           const added = core.filter((r) => !plannedRoutes.includes(r));
           plannedRoutes.push(...added);
           turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added };
@@ -181557,11 +181589,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           }
           if (isInitial) {
             const { targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
-            const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
+            const { pageFileFor: pageFileFor2, reconcileResumedPlan: reconcileResumedPlan2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const checkpointApi = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
             const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-            const planned = resumed?.checkpoint.planned?.length ? resumed.checkpoint.planned : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
+            const currentPlan = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
+            const planned = resumed?.checkpoint.planned?.length ? reconcileResumedPlan2(currentPlan, resumed.checkpoint.planned) : currentPlan;
             if (!resumed && checkpointTurnId && body.projectId) {
               const shellSaved = await checkpointApi.saveShellCheckpoint({
                 projectId: body.projectId,
@@ -181669,7 +181702,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               const reply = await (context?.secondary ? secondaryAdapter : frontierAdapter)(messages2, tools, signal);
               return { ...reply, model: reply.model ?? lastLoopModel };
             };
-            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "validated_secondary_handoff" };
+            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "automatic_proof_led_secondary" };
             const fbContext = assembleFirstBuildContext({
               knowledge: {
                 basePrompt: baseSystem,

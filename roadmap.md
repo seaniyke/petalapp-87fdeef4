@@ -1,4 +1,9 @@
 # Execution-engine replacement roadmap
+## Broad scope and structural model scheduling (24 Nov)
+- [x] Make archetype pages/entities/workflows advisory; derive required pages from the request and product surface, never a keyword family; reconcile resumed plans without template expansion.
+- [x] Automatically schedule proven routine secondary pages on Flash inside the existing conversation; preserve Argon ownership of complex work and final review, with no-proof/failed-work fallback.
+- [x] Add 18 cross-domain and forced-scheduling regressions; full suite 2,221/2,221; rebuild `2026-11-24-request-scope-auto-secondary`; document limits in docs/ops/request-scope-auto-secondary-2026-11-24.md.
+- [ ] Deploy this version and run a matched complex build/layout-edit benchmark — requires the new deployed version and production validation.
 ## Complex live validation (24 Nov)
 - [x] Confirm deployed secondary-work version and exact committed bundle hash; 38 targeted tests pass.
 - [ ] Run an isolated complex hospitality app, apply a site-wide layout edit, inspect delivered workflows on phone/desktop, and report recorded costs and repair handling against historical evidence.
@@ -6,7 +11,7 @@
 - [x] Correct exclusion-list extraction without dropping positively requested features; add regression tests.
 - [x] Keep frontier reasoning for foundations and complex work; add frontier-specified informational/read-only page handoffs to the fast model, requiring current validated dependencies; return to frontier review after one step, with unchanged verification and model-specific accounting.
 - [x] Run routing/integration tests, version and rebuild the agent bundle, and document deployment plus matched-cost validation requirements.
-- [ ] Measure live before/after cost and quality for equivalent first builds — requires deploying the new `2026-11-24-secondary-work-exclusions` service package; live health still reports `2026-11-24-proof-led-repairs`. No measured savings percentage claimed. See docs/ops/secondary-work-exclusions-2026-11-24.md.
+- [ ] Measure live before/after cost and quality for equivalent first builds — preceding `2026-11-24-secondary-work-exclusions` package is live; complex initial cost $6.97 versus historical $5.62 (24% higher), edit $0.94, no optional handoff occurred. New automatic scheduling needs deployment and matched production validation; no savings claimed.
 ## Root-cause generation reliability (24 Nov)
 - [x] Replace regex scope guesses with the existing compiler authority; retain genuine undefined-name failures, including JavaScript, and batch checks over the proposed tree.
 - [x] Let evidence-led repair scope include the shared files implicated by a defect, preserving user/plan protections and design ownership.

@@ -28,7 +28,7 @@ import { buildKitExportIndex, repairKitImports, type KitExportIndex } from "./ki
 import { addMissingImports, buildProviders, detectRouterModule, importCandidates } from "./missing-import-repair";
 import { checkUndefinedIdentifiers } from "@/server/verification/identifiers.server";
 import { AgentCircuitBreaker, BREAKER_THRESHOLDS, type BreakerThresholds } from "@/server/execution/circuit-breaker";
-import { secondaryWorkBrief, secondaryWorkRefusal, type SecondaryWork } from "./secondary-work";
+import { nextRoutineWork, routinePageWork, secondaryWorkBrief, secondaryWorkRefusal, type SecondaryWork } from "./secondary-work";
 
 /* ------------------------------------------------------------------ */
 /* Model interface                                                     */
@@ -963,6 +963,16 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     return next;
   };
   const attemptedSecondary = new Set<string>();
+  const automaticWork = () => args.light ? null : nextRoutineWork(args.secondaryPages ?? [], args.goal, { pages: args.secondaryPages ?? [], files: tree, validation: state.validation, validatedHash: state.validatedHash, hash }, attemptedSecondary);
+  const reserved = (args.light ? [] : args.secondaryPages ?? []).filter((p) => routinePageWork(p, args.goal));
+  const releaseUnprovableWork = (): string | null => {
+    const missing = reserved.filter((p) => !attemptedSecondary.has(p.file) && !tree.get(p.file)?.trim());
+    if (!missing.length) return null;
+    for (const p of missing) attemptedSecondary.add(p.file);
+    emit({ kind: "secondary_frontier_fallback", detail: missing.map((p) => p.file).join(", ") });
+    return `No clean shared dependency proof is available for ${missing.map((p) => p.file).join(", ")}. Frontier owns these pages now; implement them without reducing scope.`;
+  };
+  if (reserved.length) messages.push({ role: "user", content: `Execution phases: write the shared foundations and core/complex pages first. Petal automatically schedules these routine pages on the fast model once shared dependencies validate: ${reserved.map((p) => p.file).join(", ")}. Supply shared layout/data exports for them; do not write their contents yourself. You then resume to review every result and implement any complex behaviour. A failed or insufficient fast step returns to you, never removes a requested feature.` });
 
   async function exec(call: ToolCallMsg): Promise<{ output: string; isError: boolean; miss?: boolean }> {
     const name = call.function.name as ToolName;
@@ -978,6 +988,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     // narrows the handoff, not the user's scope: frontier resumes next step.
     if (activeSecondary && !READ_ONLY.has(name) && !(["create_file", "edit_file"].includes(name) && path === activeSecondary.path)) {
       return { output: `This step only writes ${activeSecondary.path}; frontier resumes for ${name}${path ? ` on ${path}` : ""}.`, isError: true };
+    }
+    if (!activeSecondary && name === "create_file" && !attemptedSecondary.has(path) && !tree.get(path)?.trim() && reserved.some((p) => p.file === path)) {
+      return { output: `Scheduled routine page ${path}: write and validate its shared dependencies first; Petal performs its fast step automatically, then returns review and any complex work to you.`, isError: false };
     }
 
     switch (name) {
@@ -1162,7 +1175,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
+        if (!pendingSecondary) pendingSecondary = automaticWork();
         if (pendingSecondary) return { output: "Complete the pending secondary page before finish.", isError: true };
+        const fallback = releaseUnprovableWork();
+        if (fallback) return { output: fallback, isError: false };
         const notReady = await finishGate();
         if (notReady) {
           sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
@@ -1221,7 +1237,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       compacted = true;
     }
 
-    activeSecondary = takeSecondary();
+    // Do not chain fast calls: frontier reviews each step before the next.
+    const reviewingSecondary: boolean = activeSecondary !== null;
+    activeSecondary = takeSecondary() ?? (reviewingSecondary ? null : automaticWork());
     if (activeSecondary) {
       // Recheck after the whole frontier response, since a later tool in that
       // response could have changed a dependency after the handoff was made.
@@ -1288,7 +1306,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       messages.push({ role: "user", content: "Frontier resumes: the routine step returned without writing; complete this page yourself." });
     } else if (reply.toolCalls.length === 0) {
       // Implicit finish (Webby: no tool calls = done) still passes the gate.
-      const notReady = await finishGate();
+      pendingSecondary = automaticWork();
+      const notReady = pendingSecondary ? "Complete the automatically scheduled routine page before finishing." : releaseUnprovableWork() ?? await finishGate();
       if (!notReady) state.finished = true;
       else messages.push({ role: "user", content: `You stopped, but:\n${notReady}` });
     } else {

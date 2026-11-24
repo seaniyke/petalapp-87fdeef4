@@ -11,8 +11,10 @@
  *
  * Pure; no I/O.
  */
-import type { Prd, PrdEntity, PrdSurface } from "./prd-types";
+import type { Prd, PrdSurface } from "./prd-types";
 import type { PrdRequirement } from "./prd-requirements";
+import { extractRequestedPages, pageNameToRoute } from "@/server/requested-scope";
+import { positiveRequirementText } from "./prd-requirements";
 
 export interface IntentPage {
   route: string;
@@ -29,6 +31,8 @@ export interface IntentContract {
   entities: string[];
   workflows: string[];
   pages: IntentPage[];
+  /** Domain examples only; never required routes, entities or workflows. */
+  suggestions?: { pages: IntentPage[]; entities: string[]; workflows: string[] };
   /** Concepts the plan must not introduce unless the user asks for them. */
   exclusions: string[];
   /** True when the request itself asks for selling goods online. */
@@ -224,7 +228,7 @@ const PUBLIC_PAGES: IntentPage[] = [p("/", "Home"), p("/login", "Sign in")];
 const APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
 
 /** Page names/routes that belong to a shopping product. */
-export const COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
+export const COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|wishlist)(\b|\/|$)/i;
 /** "Orders" is commerce only when it is not a domain word (lab/medical orders). */
 const COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
 
@@ -236,10 +240,18 @@ const HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical r
 /** Delivery words that only describe a shop's checkout (fee, address, free/same-day delivery). */
 const INCIDENTAL_DELIVERY = /\b(?:(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep|standard)\s+)?deliver(?:y|ies)\s+(?:fees?|charges?|costs?|prices?|address(?:es)?|options?|times?|dates?|details?|info(?:rmation)?|zones?|areas?|methods?|estimates?)\b|\b(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep)\s+deliver(?:y|ies)\b/gi;
 
+function requiredPages(named: IntentPage[], surface: ProductSurface | null): IntentPage[] {
+  const requested = surface === "public+app"
+    ? [...PUBLIC_PAGES, p("/dashboard", "Dashboard"), ...named]
+    : surface === "app" ? [p("/", "Dashboard"), ...named] : named;
+  return requested.filter((pg, i) => requested.findIndex((x) => x.route === pg.route) === i);
+}
+
 export function deriveIntentContract(brief: string, prd?: Prd | null): IntentContract {
-  const text = withoutNegatedAppWords(brief || "");
-  const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
-  const commerceRequested = commerceFamily.triggers.test(text);
+  const text = withoutNegatedAppWords(positiveRequirementText(brief || ""));
+  const named = extractRequestedPages(text).map((label) => p(pageNameToRoute(label), label));
+  const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
+  const commerceRequested = commerceFamily?.triggers.test(text) ?? false;
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
   // Aesthetic / beauty / wellness clinics are appointment businesses, not
@@ -260,13 +272,13 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
       roles: prd?.roles ?? [],
       entities: (prd?.dataModel ?? []).map((e) => e.name),
       workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
-      pages: [],
+      pages: requiredPages(named, surface),
       exclusions,
       commerceRequested,
       surface,
     };
   }
-  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, family.roles) : null;
+  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, named.length ? (prd?.roles ?? []) : family.roles) : null;
   if (surface === "public") {
     // A marketing website ABOUT the domain (e.g. "a website for a hospital"):
     // keep the domain, but not the internal app's pages or product type.
@@ -278,25 +290,26 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
       roles: [],
       entities: [],
       workflows: [],
-      pages: [],
+      pages: named,
       exclusions,
       commerceRequested,
       surface,
     };
   }
   // public+app: public pages at the front, the app's home moves to /dashboard.
-  const pages = surface === "public+app"
-    ? [...PUBLIC_PAGES, ...family.pages.map((pg) => (pg.route === "/" ? p("/dashboard", pg.label) : pg))]
-    : family.pages;
+  // Only named pages and necessary product-surface plumbing are required.
+  // A stray domain word may suggest examples, never enlarge the contract.
+  const pages = requiredPages(named, surface);
   return {
     archetype: family.id,
     label: family.label,
     domain: prd?.domain || family.label,
     productType: family.productType,
-    roles: family.roles,
-    entities: family.entities,
-    workflows: family.workflows,
+    roles: prd?.roles ?? [],
+    entities: (prd?.dataModel ?? []).map((e) => e.name),
+    workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
     pages,
+    ...(named.length ? {} : { suggestions: { pages: family.pages, entities: family.entities, workflows: family.workflows } }),
     exclusions,
     commerceRequested,
     surface,
@@ -307,8 +320,6 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
  * Validate planned/router pages against the contract. Returns the routes that
  * materially diverge from the request (e.g. shop pages in a hospital system).
  */
-const ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
-
 export function divergentPages(contract: IntentContract, routes: string[], brief: string): string[] {
   if (contract.commerceRequested) return [];
   const contractRoutes = new Set(contract.pages.map((x) => x.route));
@@ -320,11 +331,7 @@ export function divergentPages(contract: IntentContract, routes: string[], brief
   for (const r of routes) {
     if (contractRoutes.has(r) || briefMentions(r)) continue;
     if (COMMERCE_PAGE.test(r)) out.push(r);
-    // A recognised archetype defines the product's pages: a template/router
-    // page outside it (e.g. a clinic-booking "/services" or "/confirmation"
-    // for a hospital system) is drift, unless the user named it. Account
-    // plumbing (/, auth, profile, dashboard) is always allowed.
-    else if (contract.archetype && contract.pages.length && !ALWAYS_ALLOWED.test(r)) out.push(r);
+    // Domain families cannot prohibit another domain's legitimate workflow.
     else if (COMMERCE_ORDERS.test(r) && routes.some((x) => COMMERCE_PAGE.test(x))) out.push(r);
   }
   return out;
@@ -345,11 +352,12 @@ export function renderIntentBlock(c: IntentContract): string {
   return [
     `\n\n### Product contract (authoritative — do not drift)`,
     c.surface ? SURFACE_LINE[c.surface] : "",
-    c.archetype ? `Product: ${c.label}${c.domain && c.domain !== c.label ? ` (${c.domain})` : ""}.` : "",
+    c.archetype ? `Domain reference: ${c.label}. This is context, not a template or a required feature list. The user's product and workflows win.` : "",
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
     c.workflows.length ? `Primary workflows: ${c.workflows.join("; ")}.` : "",
     c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}. One route per page — no duplicate routes and no extra navigation-only pages (e.g. a Menu page repeating the sidebar).` : "",
+    c.suggestions ? `Optional domain examples (use only where the request needs them, never add to a specified scope): ${c.suggestions.pages.map((x) => x.label).join(", ")}. A vague brief may need relevant concepts; an explicit brief must not acquire unrelated modules.` : "",
     c.exclusions.length ? `OUT OF SCOPE — never add: ${c.exclusions.join(", ")}.` : "",
   ].filter(Boolean).join("\n");
 }
@@ -378,20 +386,10 @@ export function applyIntentContract(prd: Prd, brief: string, now = new Date().to
   }
   if (c.productType === "workflow-app") {
     const keep = (next.requiredSurfaces ?? prd.requiredSurfaces).filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
-    next.requiredSurfaces = Array.from(new Set<PrdSurface>([...keep, "dashboard", "settings"]));
+    next.requiredSurfaces = Array.from(new Set<PrdSurface>([...keep, "dashboard"]));
     next.excludedSurfaces = Array.from(new Set<PrdSurface>([...prd.excludedSurfaces.filter((s) => s !== "dashboard"), ...(c.commerceRequested ? [] : (["checkout", "catalog"] as PrdSurface[]))]));
   }
   if (!prd.roles?.length) next.roles = c.roles;
-  if (!prd.dataModel?.length) {
-    next.dataModel = c.entities.map<PrdEntity>((name) => ({
-      name,
-      fields: [],
-      operations: ["create", "read", "update", "delete"],
-      visibility: "role",
-      allowedRoles: c.roles.slice(0, 2),
-      relationships: [],
-    }));
-  }
   if (c.exclusions.length) next.outOfScope = Array.from(new Set([...(prd.outOfScope ?? []), ...c.exclusions]));
   // Every contract page becomes a page requirement (the plan contract).
   const reqs = [...(prd.requirements ?? [])];

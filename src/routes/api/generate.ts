@@ -3627,7 +3627,9 @@ async function handleGenerateRequestCore(
   if (isInitial) {
     try {
       const { deriveIntentContract, divergentPages, renderIntentBlock } = await import("@/server/prd/intent-contract");
-      intentContract = resolvedPrd?.prd.intent ?? deriveIntentContract(lastUserText, resolvedPrd?.prd ?? null);
+      // Re-derive, including resumed builds: old stored contracts may still
+      // contain template-injected routes from the previous authority.
+      intentContract = deriveIntentContract(lastUserText, resolvedPrd?.prd ?? null);
       const bad = divergentPages(intentContract, plannedRoutes, lastUserText);
       if (bad.length) {
         console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
@@ -3636,22 +3638,10 @@ async function handleGenerateRequestCore(
         // below replaces it rather than competing with it.
         if (intentContract.archetype) archetypeBlock = "";
       }
-      // Plan validation: the plan must actually cover the requested product's
-      // core modules. Under half covered → replan onto the contract's modules
-      // BEFORE any page is generated (no generation/repair cycles wasted).
+      // All contract pages are request/surface-derived, never family defaults.
       if (intentContract.pages.length) {
         const core = intentContract.pages.map((pg) => pg.route);
-        // Template sub-pages (e.g. /dashboard/items) duplicate contract pages;
-        // keep only nested routes the contract lists or the user named.
-        const lowerAsk = lastUserText.toLowerCase();
-        for (const r of [...plannedRoutes]) {
-          const segs = r.split("/").filter(Boolean);
-          if (segs.length > 1 && segs[0] !== "auth" && !core.includes(r) && !lowerAsk.includes(segs[segs.length - 1]!.replace(/^\$/, ""))) {
-            plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
-          }
-        }
-        const covered = core.filter((r) => plannedRoutes.includes(r)).length;
-        if (covered * 2 < core.length) {
+        if (core.some((r) => !plannedRoutes.includes(r))) {
           const added = core.filter((r) => !plannedRoutes.includes(r));
           plannedRoutes.push(...added);
           turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added };
@@ -4815,7 +4805,7 @@ async function handleGenerateRequestCore(
           // earlier generation call.
           if (isInitial) {
             const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
-            const { pageFileFor } = await import("@/server/engine/plan");
+            const { pageFileFor, reconcileResumedPlan } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
             // Snapshot of the shell answer exactly as parsed, taken before any
             // deterministic cleanup (which re-runs identically on resume).
@@ -4823,9 +4813,10 @@ async function handleGenerateRequestCore(
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
             // planning failed.
+            const currentPlan = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
             const planned = resumed?.checkpoint.planned?.length
-              ? resumed.checkpoint.planned
-              : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+              ? reconcileResumedPlan(currentPlan, resumed.checkpoint.planned)
+              : currentPlan;
             if (!resumed && checkpointTurnId && body.projectId) {
               const shellSaved = await checkpointApi.saveShellCheckpoint({
                 projectId: body.projectId,
@@ -4953,7 +4944,7 @@ async function handleGenerateRequestCore(
               const reply = await (context?.secondary ? secondaryAdapter : frontierAdapter)(messages, tools, signal);
               return { ...reply, model: reply.model ?? lastLoopModel };
             };
-            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "validated_secondary_handoff" };
+            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "automatic_proof_led_secondary" };
             // Minimum sufficient context: tiered knowledge (always-on /
             // task-conditional in the stable prefix, the rest retrievable
             // as read-only knowledge/*.md). One source per rule; the design

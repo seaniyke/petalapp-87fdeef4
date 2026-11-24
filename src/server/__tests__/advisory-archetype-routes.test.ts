@@ -33,11 +33,12 @@ describe("advisory archetype routes", () => {
     expect(required).not.toContain("/dashboard/settings");
   });
 
-  it("a recognised domain (hospital) still requires the intent contract's pages", () => {
+  it("a recognised domain supplies examples, never required family pages", () => {
     const contract = deriveIntentContract("Build me a hospital management system", null);
     expect(contract.pages.length).toBeGreaterThan(0);
     const routes = contract.pages.map((p) => p.route);
-    expect(routes).toContain("/patients");
+    expect(routes).not.toContain("/patients");
+    expect(contract.suggestions?.pages.map((p) => p.route)).toContain("/patients");
   });
 
   it("pages the user named are still required", () => {

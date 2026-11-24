@@ -34,6 +34,12 @@ export interface FirstBuildPlan {
   log: string;
 }
 
+/** Resume keeps saved file identities, not an obsolete family-expanded plan.
+ * Validated source remains untouched; this only selects required work. */
+export function reconcileResumedPlan(current: PlannedPage[], saved: PlannedPage[]): PlannedPage[] {
+  return current.map((page) => saved.find((old) => old.route === page.route) ?? page);
+}
+
 export function pageFileFor(route: string): string {
   const seg = route.replace(/^\//, "").split("/")[0] || "home";
   const name = seg

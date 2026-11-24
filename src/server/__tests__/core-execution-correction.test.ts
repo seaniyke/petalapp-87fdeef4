@@ -10,14 +10,15 @@ describe("intent contract", () => {
   it("recognises a hospital system and excludes commerce", () => {
     const c = deriveIntentContract(HOSPITAL);
     expect(c.archetype).toBe("healthcare");
-    expect(c.pages.map((p) => p.route)).toEqual(expect.arrayContaining(["/patients", "/doctors", "/appointments", "/records", "/prescriptions", "/billing"]));
+    expect(c.pages.map((p) => p.route)).toEqual(["/", "/login", "/dashboard"]);
+    expect(c.suggestions?.pages.map((p) => p.route)).toContain("/patients");
     expect(c.commerceRequested).toBe(false);
     expect(c.exclusions).toContain("checkout");
   });
 
   it("flags shop pages as divergent for a hospital request", () => {
     const c = deriveIntentContract(HOSPITAL);
-    expect(divergentPages(c, ["/products", "/shop", "/cart", "/checkout", "/orders", "/patients"], HOSPITAL).sort()).toEqual(["/cart", "/checkout", "/orders", "/products", "/shop"]);
+    expect(divergentPages(c, ["/products", "/shop", "/cart", "/checkout", "/orders", "/patients"], HOSPITAL).sort()).toEqual(["/cart", "/checkout", "/orders", "/shop"]);
   });
 
   it("keeps commerce pages when the user asked for a store", () => {
@@ -27,12 +28,12 @@ describe("intent contract", () => {
     expect(divergentPages(c, ["/shop", "/cart", "/checkout"], brief)).toEqual([]);
   });
 
-  it("enriches a weak PRD into a workflow app with page requirements", () => {
+  it("enriches a weak PRD without inventing family page requirements", () => {
     const prd = applyIntentContract(deterministicPrd(HOSPITAL), HOSPITAL);
     expect(prd.productType).toBe("workflow-app");
     expect(prd.requiredSurfaces).toContain("dashboard");
     expect(prd.requiredSurfaces).not.toContain("checkout");
-    expect((prd.requirements ?? []).map((r) => r.description)).toEqual(expect.arrayContaining(["Patients", "Appointments", "Medical Records"]));
+    expect((prd.requirements ?? []).map((r) => r.description)).not.toContain("Prescriptions");
     expect(prd.intent?.archetype).toBe("healthcare");
   });
 
@@ -86,9 +87,9 @@ describe("foundation contract", () => {
 });
 
 describe("template drift", () => {
-  it("drops clinic-booking template pages for a hospital system but keeps account pages", () => {
+  it("does not veto legitimate cross-domain pages based on the family", () => {
     const c = deriveIntentContract(HOSPITAL);
-    expect(divergentPages(c, ["/", "/services", "/confirmation", "/book", "/patients", "/auth", "/dashboard"], HOSPITAL).sort()).toEqual(["/book", "/confirmation", "/services"]);
+    expect(divergentPages(c, ["/", "/services", "/confirmation", "/book", "/patients", "/auth", "/dashboard"], HOSPITAL)).toEqual([]);
   });
   it("keeps a page the user named", () => {
     const brief = "Build a hospital management system with a pharmacy page";
