@@ -93,7 +93,7 @@ export class TurnLedger {
    * and those writers are validated by their own deterministic mechanisms.
    */
   write(path: string, next: string, current: string | undefined, purpose: string, writer?: string) {
-    if (current !== undefined && !this.hasRead(path)) {
+    if (current !== undefined && !this.hasRead(path) && !preservesBaseline(current, next)) {
       this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "unread_write" });
       return { ok: false as const, refusal: "unread_write" as Refusal };
     }
@@ -118,4 +118,20 @@ export class TurnLedger {
       committed: this.committed,
     };
   }
+}
+
+/**
+ * True when `next` is an edit OF `current` rather than a blind rewrite: most
+ * of the existing non-blank lines survive verbatim. Edits are applied
+ * server-side against the real bytes, so a high survival rate proves the
+ * writer worked from the actual file even when it was not in the prompt.
+ * A hallucinated replacement keeps almost nothing and is still refused.
+ */
+export function preservesBaseline(current: string, next: string, minRatio = 0.8): boolean {
+  const lines = current.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 5) return false;
+  const after = new Set(next.split("\n").map((l) => l.trim()));
+  let kept = 0;
+  for (const l of lines) if (after.has(l)) kept++;
+  return kept / lines.length >= minRatio;
 }

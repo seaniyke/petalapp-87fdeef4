@@ -216,6 +216,7 @@ import {
 } from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import { gatherWebIntel } from "@/server/web-intel/web-intel.server";
+import { promptPriority } from "@/server/context/prompt-priority";
 import {
   proposeChangePlan,
   savePlan,
@@ -517,9 +518,11 @@ function trimFilesForPrompt(
   let ceilingHit = false;
   // Priority order: edit targets, pins, then relevance. Pinning decides WHO
   // gets the budget first — it no longer exempts anyone from it.
+  const prio = (f: ProjectFile) =>
+    promptPriority(f.path, { target: full.has(f.path), pinned: pinned.has(f.path), relevant: isPromptRelevant(f) });
   for (const file of [...files].sort(
     (a, b) =>
-      (isPromptRelevant(a) ? 3 : rank(a.path)) - (isPromptRelevant(b) ? 3 : rank(b.path)) ||
+      prio(a) - prio(b) ||
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
@@ -3378,7 +3381,7 @@ async function handleGenerateRequestCore(
   const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}${explorationBlock}`;
   // One TurnLedger per turn: enforces TURN_LIMITS on repairs, writes and
   // deletes; the TurnTransaction at the commit point is accounted by it.
-  const { TurnLedger, commitTurn } = await import("@/server/execution");
+  const { TurnLedger, commitTurn, isAdditiveChromeEdit } = await import("@/server/execution");
   const turnLedger = new TurnLedger();
   const turnChecks: Array<{ check: string; verdict: import("@/server/execution").Verdict; detail?: string }> = [];
   console.info(
@@ -7386,7 +7389,11 @@ async function handleGenerateRequestCore(
             });
           },
           fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles),
+          permitDespiteProtection: (path, before, after) => isAdditiveChromeEdit(path, before, after),
         });
+        if (txResult.discarded.length) {
+          console.info(`[execution] discarded=${JSON.stringify(txResult.discarded.slice(0, 8))}`);
+        }
         if (txResult.substituted.length) {
           turnStrategy.resilientFallback = txResult.substituted;
           console.warn(`[resilient-fallback] substituted ${txResult.substituted.map((s) => s.path).join(", ")}`);

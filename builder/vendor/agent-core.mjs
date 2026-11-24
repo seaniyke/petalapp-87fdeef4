@@ -143110,7 +143110,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145439,7 +145438,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -146644,7 +146642,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -147744,6 +147741,19 @@ function renderScopeBlock(s) {
   lines.push("- A new file is allowed only when a changed file imports it.");
   return lines.join("\n");
 }
+function isChromePath(path) {
+  return CHROME_RE.test(path);
+}
+function isAdditiveChromeEdit(path, before, after) {
+  if (before === void 0 || !CHROME_RE.test(path)) return false;
+  const a2 = before.split("\n").map((l) => l.trim()).filter(Boolean);
+  const b = after.split("\n").map((l) => l.trim()).filter(Boolean);
+  const bSet = new Set(b);
+  const aSet = new Set(a2);
+  const removed = a2.filter((l) => !bSet.has(l)).length;
+  const added = b.filter((l) => !aSet.has(l)).length;
+  return removed <= 2 && added > 0 && added <= 40;
+}
 var CHROME_RE, CHROME_WORDS;
 var init_scope = __esm({
   "src/server/execution/scope.ts"() {
@@ -147780,12 +147790,19 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
 
 // src/server/execution/ledger.ts
+function preservesBaseline(current2, next, minRatio = 0.8) {
+  const lines = current2.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 5) return false;
+  const after = new Set(next.split("\n").map((l) => l.trim()));
+  let kept = 0;
+  for (const l of lines) if (after.has(l)) kept++;
+  return kept / lines.length >= minRatio;
+}
 var TURN_LIMITS, TurnLedger;
 var init_ledger = __esm({
   "src/server/execution/ledger.ts"() {
@@ -147861,7 +147878,7 @@ var init_ledger = __esm({
        * and those writers are validated by their own deterministic mechanisms.
        */
       write(path, next, current2, purpose, writer) {
-        if (current2 !== void 0 && !this.hasRead(path)) {
+        if (current2 !== void 0 && !this.hasRead(path) && !preservesBaseline(current2, next)) {
           this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "unread_write" });
           return { ok: false, refusal: "unread_write" };
         }
@@ -148012,6 +148029,7 @@ async function commitTurn(args) {
   const rejections = [];
   const noOps = [];
   const substituted = [];
+  const discarded = [];
   const refusalReason = () => {
     const last2 = args.ledger.summary().refusals.at(-1) ?? "";
     if (last2.includes(":limit")) return "limit";
@@ -148024,19 +148042,18 @@ async function commitTurn(args) {
     if (base.get(path) === content) continue;
     if (!system) {
       const why = args.protectionReason(path);
-      if (why) {
-        rejections.push({
-          operation: "write",
-          path,
-          reason: "scope_violation",
-          detail: why,
-          recoverable: true,
-          next: "retry without changing this file, or name it explicitly in the request"
-        });
+      if (why && !args.permitDespiteProtection?.(path, base.get(path), content)) {
+        discarded.push({ operation: "write", path, reason: why });
         continue;
       }
     }
     if (!tx.stage(path, content, "turn change", { system })) {
+      const last2 = args.ledger.summary().refusals.at(-1) ?? "";
+      if (last2.startsWith("write:unread_write:")) {
+        discarded.push({ operation: "write", path, reason: "rewrite of a file the writer never saw" });
+        continue;
+      }
+      if (last2.startsWith("write:no_op_write:")) continue;
       const reason = refusalReason();
       rejections.push({
         operation: "write",
@@ -148051,14 +148068,7 @@ async function commitTurn(args) {
   for (const path of base.keys()) {
     if (next.has(path)) continue;
     if (!args.isSystemPath(path) && args.protectionReason(path)) {
-      rejections.push({
-        operation: "delete",
-        path,
-        reason: "scope_violation",
-        detail: args.protectionReason(path),
-        recoverable: true,
-        next: "retry without removing this file"
-      });
+      discarded.push({ operation: "delete", path, reason: args.protectionReason(path) });
       continue;
     }
     if (!tx.remove(path, { system: args.isSystemPath(path) })) {
@@ -148151,6 +148161,15 @@ async function commitTurn(args) {
   }
   if (args.cancelled()) args.ledger.cancel();
   const outcome = tx.commit();
+  if (outcome.status === "rolled_back" && rejections.length === 0 && discarded.length && outcome.reason === "no changes") {
+    rejections.push({
+      operation: "commit",
+      reason: "scope_violation",
+      detail: `every change was held back: ${discarded.slice(0, 3).map((d) => `${d.path} (${d.reason})`).join("; ")}`,
+      recoverable: true,
+      next: "retry with the needed file in view, or name it in the request"
+    });
+  }
   if (outcome.status === "rolled_back" && rejections.length === 0) {
     rejections.push({
       operation: "commit",
@@ -148160,7 +148179,7 @@ async function commitTurn(args) {
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
     });
   }
-  return { outcome, rejections, noOps, verification, substituted };
+  return { outcome, rejections, noOps, verification, substituted, discarded };
 }
 var init_commit = __esm({
   "src/server/execution/commit.ts"() {
@@ -148335,9 +148354,12 @@ __export(execution_exports, {
   errorFingerprint: () => errorFingerprint,
   finalDepth: () => finalDepth,
   initialDepth: () => initialDepth,
+  isAdditiveChromeEdit: () => isAdditiveChromeEdit,
+  isChromePath: () => isChromePath,
   maxDepth: () => maxDepth,
   needsBrowser: () => needsBrowser,
   normalizeErrorMessage: () => normalizeErrorMessage,
+  preservesBaseline: () => preservesBaseline,
   renderScopeBlock: () => renderScopeBlock,
   sectionDirFor: () => sectionDirFor,
   shouldRepair: () => shouldRepair,
@@ -173646,6 +173668,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -178406,6 +178429,23 @@ async function gatherWebIntel(args) {
   }
 }
 
+// src/server/context/prompt-priority.ts
+init_define_import_meta_env();
+var FOUNDATION_RE = /(^|\/)(styles|index|globals|custom)\.css$|^src\/App\.tsx$|(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
+function isFoundationPath(path) {
+  return FOUNDATION_RE.test(path);
+}
+function promptPriority(path, flags) {
+  if (flags.target) return 0;
+  if (isFoundationPath(path)) return 1;
+  if (flags.pinned && flags.relevant) return 2;
+  if (flags.pinned) return 3;
+  if (flags.relevant) return 4;
+  if (path.startsWith("src/pages/") || path.startsWith("src/routes/")) return 5;
+  if (path.startsWith("src/components/")) return 6;
+  return 9;
+}
+
 // src/server/plan-mode.ts
 init_define_import_meta_env();
 init_ai_provider_server();
@@ -178711,8 +178751,9 @@ ${file.content.slice(0, 24e3)}`.toLowerCase();
   const picked = [];
   let usedTokens = 0;
   let ceilingHit = false;
+  const prio = (f) => promptPriority(f.path, { target: full.has(f.path), pinned: pinned.has(f.path), relevant: isPromptRelevant(f) });
   for (const file of [...files].sort(
-    (a2, b) => (isPromptRelevant(a2) ? 3 : rank3(a2.path)) - (isPromptRelevant(b) ? 3 : rank3(b.path)) || rank3(a2.path) - rank3(b.path) || a2.path.localeCompare(b.path)
+    (a2, b) => prio(a2) - prio(b) || rank3(a2.path) - rank3(b.path) || a2.path.localeCompare(b.path)
   )) {
     if (picked.length >= fileLimit) break;
     if (usedTokens >= tokenCeiling) {
@@ -180592,7 +180633,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     }
   })();
   const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}${explorationBlock}`;
-  const { TurnLedger: TurnLedger2, commitTurn: commitTurn2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const { TurnLedger: TurnLedger2, commitTurn: commitTurn2, isAdditiveChromeEdit: isAdditiveChromeEdit2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
   const turnLedger = new TurnLedger2();
   const turnChecks = [];
   console.info(
@@ -183550,8 +183591,12 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               surface: intentContract?.surface ?? null
             });
           },
-          fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles)
+          fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles),
+          permitDespiteProtection: (path, before, after) => isAdditiveChromeEdit2(path, before, after)
         });
+        if (txResult.discarded.length) {
+          console.info(`[execution] discarded=${JSON.stringify(txResult.discarded.slice(0, 8))}`);
+        }
         if (txResult.substituted.length) {
           turnStrategy.resilientFallback = txResult.substituted;
           console.warn(`[resilient-fallback] substituted ${txResult.substituted.map((s) => s.path).join(", ")}`);

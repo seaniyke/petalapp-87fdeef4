@@ -67,13 +67,16 @@ describe("live commit boundary", () => {
     expect(r.rejections[0].reason).toBe("no_changes");
   });
 
-  it("E: an out-of-scope mutation is rejected and nothing commits", async () => {
+  it("E: an out-of-scope mutation is held back; the requested change still commits", async () => {
     const r = await run(edit({ "src/pages/Home.tsx": "v2", "src/components/Header.tsx": "h2" }), {
       protectionReason: (p) => (p.includes("Header") ? "shared navigation/layout was not part of this request" : null),
     });
-    expect(r.outcome.status).toBe("rolled_back");
-    expect(r.outcome.files).toEqual(base);
-    expect(r.rejections[0]).toMatchObject({ path: "src/components/Header.tsx", reason: "scope_violation", recoverable: true });
+    expect(r.outcome.status).toBe("committed");
+    if (r.outcome.status === "committed") {
+      expect(r.outcome.changed).toEqual(["src/pages/Home.tsx"]);
+      expect(r.outcome.files.find((f) => f.path === "src/components/Header.tsx")?.content).toBe(base.find((f) => f.path === "src/components/Header.tsx")?.content);
+    }
+    expect(r.discarded[0]).toMatchObject({ path: "src/components/Header.tsx", operation: "write" });
   });
 
   it("F: cancellation before commit keeps the previous state", async () => {

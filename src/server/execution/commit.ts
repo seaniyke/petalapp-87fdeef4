@@ -50,7 +50,19 @@ export interface CommitTurnArgs {
    * the whole build.
    */
   fallbackFor?: (path: string, tree: TxFile[]) => string | null;
+  /**
+   * A protected path may still change when this returns true (e.g. an
+   * additive link in shared navigation that the requested change needs).
+   */
+  permitDespiteProtection?: (path: string, before: string | undefined, after: string) => boolean;
 }
+
+/**
+ * A single file change that could not land safely (out of scope, or a blind
+ * rewrite of a file the writer never saw). It is dropped — the file keeps its
+ * current content — and the rest of the turn still goes through verification.
+ */
+export type DiscardedChange = { operation: "write" | "delete"; path: string; reason: string };
 
 /** Files that were replaced by their fallback during commit. */
 export type SubstitutedFile = { path: string; reason: string };
@@ -67,6 +79,8 @@ export interface CommitTurnResult {
   verification: SourceVerification | null;
   /** Files swapped for their fallback so the rest of the build could land. */
   substituted: SubstitutedFile[];
+  /** Changes dropped so the rest of the turn could land. */
+  discarded: DiscardedChange[];
 }
 
 export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult> {
@@ -80,6 +94,7 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
   const rejections: CommitRejection[] = [];
   const noOps: string[] = [];
   const substituted: SubstitutedFile[] = [];
+  const discarded: DiscardedChange[] = [];
 
   const refusalReason = (): CommitRejection["reason"] => {
     const last = args.ledger.summary().refusals.at(-1) ?? "";
@@ -94,19 +109,20 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
     if (base.get(path) === content) continue;
     if (!system) {
       const why = args.protectionReason(path);
-      if (why) {
-        rejections.push({
-          operation: "write",
-          path,
-          reason: "scope_violation",
-          detail: why,
-          recoverable: true,
-          next: "retry without changing this file, or name it explicitly in the request",
-        });
+      if (why && !args.permitDespiteProtection?.(path, base.get(path), content)) {
+        // Keep the protected file byte-identical, but do not throw away the
+        // rest of the turn: verification below decides if the tree still holds.
+        discarded.push({ operation: "write", path, reason: why });
         continue;
       }
     }
     if (!tx.stage(path, content, "turn change", { system })) {
+      const last = args.ledger.summary().refusals.at(-1) ?? "";
+      if (last.startsWith("write:unread_write:")) {
+        discarded.push({ operation: "write", path, reason: "rewrite of a file the writer never saw" });
+        continue;
+      }
+      if (last.startsWith("write:no_op_write:")) continue;
       const reason = refusalReason();
       rejections.push({
         operation: "write",
@@ -121,14 +137,7 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
   for (const path of base.keys()) {
     if (next.has(path)) continue;
     if (!args.isSystemPath(path) && args.protectionReason(path)) {
-      rejections.push({
-        operation: "delete",
-        path,
-        reason: "scope_violation",
-        detail: args.protectionReason(path)!,
-        recoverable: true,
-        next: "retry without removing this file",
-      });
+      discarded.push({ operation: "delete", path, reason: args.protectionReason(path)! });
       continue;
     }
     if (!tx.remove(path, { system: args.isSystemPath(path) })) {
@@ -227,6 +236,15 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
   if (args.cancelled()) args.ledger.cancel();
 
   const outcome = tx.commit();
+  if (outcome.status === "rolled_back" && rejections.length === 0 && discarded.length && outcome.reason === "no changes") {
+    rejections.push({
+      operation: "commit",
+      reason: "scope_violation",
+      detail: `every change was held back: ${discarded.slice(0, 3).map((d) => `${d.path} (${d.reason})`).join("; ")}`,
+      recoverable: true,
+      next: "retry with the needed file in view, or name it in the request",
+    });
+  }
   if (outcome.status === "rolled_back" && rejections.length === 0) {
     rejections.push({
       operation: "commit",
@@ -236,5 +254,5 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry",
     });
   }
-  return { outcome, rejections, noOps, verification, substituted };
+  return { outcome, rejections, noOps, verification, substituted, discarded };
 }

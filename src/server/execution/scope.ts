@@ -93,3 +93,25 @@ export function renderScopeBlock(s: ExecutionScope): string {
   lines.push("- A new file is allowed only when a changed file imports it.");
   return lines.join("\n");
 }
+
+/** Shared navigation/layout file (header, footer, nav, sidebar, shell, layout). */
+export function isChromePath(path: string): boolean {
+  return CHROME_RE.test(path);
+}
+
+/**
+ * An additive change to shared chrome: it only adds a few lines (a link, a
+ * menu item, a badge) and removes almost nothing, so it cannot break the
+ * pages that render it. These follow from the requested change (a new flow
+ * needs a way in), not from the user naming the header in their words.
+ */
+export function isAdditiveChromeEdit(path: string, before: string | undefined, after: string): boolean {
+  if (before === undefined || !CHROME_RE.test(path)) return false;
+  const a = before.split("\n").map((l) => l.trim()).filter(Boolean);
+  const b = after.split("\n").map((l) => l.trim()).filter(Boolean);
+  const bSet = new Set(b);
+  const aSet = new Set(a);
+  const removed = a.filter((l) => !bSet.has(l)).length;
+  const added = b.filter((l) => !aSet.has(l)).length;
+  return removed <= 2 && added > 0 && added <= 40;
+}
