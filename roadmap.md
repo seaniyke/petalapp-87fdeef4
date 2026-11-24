@@ -4,7 +4,7 @@
 - [x] Let evidence-led repair scope include the shared files implicated by a defect, preserving user/plan protections and design ownership.
 - [x] Preserve defect identity across automatic repair turn ids, and stop double-counting worker-claimed attempts; unchanged failed repairs stop, changed defects may continue.
 - [x] Add regression tests (19 new cases; 2,184 tests passing), rebuild/version the agent bundle, and prepare the downloadable Custard pricing-alignment letter; preview compilation is clean.
-- [ ] Verify the changed pipeline live — requires publishing Petal and deploying the rebuilt worker through Deploy Petal Builder; health still reports 2026-11-23-product-personalities, not 2026-11-24-proof-led-repairs. No live cost reduction or 100% first-pass rate is claimed.
+- [ ] Complete matched repair/cost validation — deployed version and hash confirmed; isolated initial website + text edit both delivered and browser-checked (2/2 recorded verification passes versus historical 6/10). Targeted tests 22/22. Actual stylesheet repair and unchanged-defect stopping not exercised live; exact historical request/source fixture missing for attributable cost reduction. Report: docs/ops/proof-led-repairs-validation-2026-11-24.md. Separate excluded-feature extraction defect observed; no behaviour changed.
 ## Atelier Lace v5 completion (21 Nov)
 - [x] Confirm latest builder version, claim atelier-lace-v5 address, and publish current ready revision.
 - [x] Inspect logo and imagery on all four phone/desktop pages; no overflow or page errors. Verify entrance motion, mobile menu navigation, reduced-motion visibility, and on-screen booking confirmation. Submission is in-memory only: no appointment is saved or sent to the salon.
