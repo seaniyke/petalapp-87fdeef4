@@ -1,4 +1,4 @@
-import { defaultFirstBuildModel, classifyTaskDifficulty, modelForDifficulty } from "@/lib/ai-model-config";
+import { defaultFirstBuildModel, defaultTextModel, classifyTaskDifficulty, modelForDifficulty } from "@/lib/ai-model-config";
 import { toOperationType } from "@/lib/operation-identity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
@@ -4903,16 +4903,16 @@ async function handleGenerateRequestCore(
                 return (row) => supabaseAdmin.from("tool_loop_calls" as never).insert(row as never);
               },
             );
-            // Cognitive tiering: the first build runs on the frontier model;
-            // edits keep the fast model (MODEL_BEST / MODEL_STRUCTURED_RETRY).
             const firstBuildModel = defaultFirstBuildModel();
-            const callModel = makeCallModel(
+            const secondaryModel = defaultTextModel();
+            let lastLoopModel = firstBuildModel;
+            const adapterFor = (selectedModel: string) => makeCallModel(
               (reqBody, signal) =>
                 withProviderRetry(
                   () =>
                     aiChatCompletions({
                       feature: "generate",
-                      body: { ...reqBody, reasoning: { enabled: false }, model: firstBuildModel },
+                      body: { ...reqBody, reasoning: { enabled: false }, model: selectedModel },
                       timeoutTier: "stream_first_build",
                       lockCallerModel: true,
                       codeOutput: true,
@@ -4931,12 +4931,12 @@ async function handleGenerateRequestCore(
                 ),
               (u) => {
                 if (!u) return;
-                pageWriteUsages.push({ ...u, model: firstBuildModel });
+                pageWriteUsages.push({ ...u, model: selectedModel });
                 // Cost capture: every loop call's ai_call_log row gets its
                 // tokens and cost (ACTUAL from the provider, else ESTIMATED).
                 void updateLastCallUsage({
                   feature: "generate",
-                  model: firstBuildModel,
+                  model: selectedModel,
                   promptTokens: u.prompt_tokens ?? null,
                   completionTokens: u.completion_tokens ?? null,
                   totalTokens: u.total_tokens ?? null,
@@ -4946,6 +4946,14 @@ async function handleGenerateRequestCore(
                 });
               },
             );
+            const frontierAdapter = adapterFor(firstBuildModel);
+            const secondaryAdapter = adapterFor(secondaryModel);
+            const callModel: import("@/server/engine/tool-loop").CallModel = async (messages, tools, signal, context) => {
+              lastLoopModel = context?.secondary ? secondaryModel : firstBuildModel;
+              const reply = await (context?.secondary ? secondaryAdapter : frontierAdapter)(messages, tools, signal);
+              return { ...reply, model: reply.model ?? lastLoopModel };
+            };
+            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "validated_secondary_handoff" };
             // Minimum sufficient context: tiered knowledge (always-on /
             // task-conditional in the stable prefix, the rest retrievable
             // as read-only knowledge/*.md). One source per rule; the design
@@ -5020,19 +5028,19 @@ async function handleGenerateRequestCore(
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } } as GatewayUsage, firstBuildModel).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } } as GatewayUsage, r.model ?? lastLoopModel).costUsd;
                   if (c != null) return c;
                 }
                 // Unmeasured call (e.g. interrupted stream): never free, priced as
                 // ONE call at the uncached rate — never the whole-build estimate,
                 // which stopped healthy builds after two dropped streams.
-                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd(lastPromptTokens, loopModelPrice));
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd(lastPromptTokens, modelPricePerM(lastLoopModel)));
               },
               // Checked before EVERY call, including the first: all prompt
               // tokens at the uncached rate plus a typical write's output.
-              predictCallUsd: (promptTokens) => {
+              predictCallUsd: (promptTokens, context) => {
                 lastPromptTokens = promptTokens;
-                return predictCallCostUsd(promptTokens, loopModelPrice);
+                return predictCallCostUsd(promptTokens, modelPricePerM(context?.secondary ? secondaryModel : firstBuildModel));
               },
               goal: lastUserText,
               system: fbContext.system,
@@ -5066,6 +5074,7 @@ async function handleGenerateRequestCore(
                 .concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
+              secondaryPages: planned as Array<{ route: string; file: string }>,
               // THE readiness authority: the exact proposed-tree transform and
               // source verification commitTurn runs (scaffold + shell, then
               // verifyProposedSource with the same requested routes).

@@ -28,6 +28,7 @@ import { buildKitExportIndex, repairKitImports, type KitExportIndex } from "./ki
 import { addMissingImports, buildProviders, detectRouterModule, importCandidates } from "./missing-import-repair";
 import { checkUndefinedIdentifiers } from "@/server/verification/identifiers.server";
 import { AgentCircuitBreaker, BREAKER_THRESHOLDS, type BreakerThresholds } from "@/server/execution/circuit-breaker";
+import { secondaryWorkBrief, secondaryWorkRefusal, type SecondaryWork } from "./secondary-work";
 
 /* ------------------------------------------------------------------ */
 /* Model interface                                                     */
@@ -64,7 +65,8 @@ export interface ModelReply {
   upstream?: string;
 }
 
-export type CallModel = (messages: LoopMessage[], tools: ToolSchema[], signal?: AbortSignal) => Promise<ModelReply>;
+export interface LoopCallContext { secondary: SecondaryWork | null }
+export type CallModel = (messages: LoopMessage[], tools: ToolSchema[], signal?: AbortSignal, context?: LoopCallContext) => Promise<ModelReply>;
 
 export interface ToolSchema {
   type: "function";
@@ -327,6 +329,8 @@ export interface ToolLoopArgs {
   /** Paths already written this turn; validated at loop start like any write. */
   seedPaths?: string[];
   callModel: CallModel;
+  /** Enables frontier-specified routine page handoffs only on first builds. */
+  secondaryPages?: Array<{ route: string; file: string }>;
   /** Per-write validation (syntax, TSX, undefined names, imports, truncation). */
   validate: (file: ProjectFile, tree: ProjectFile[]) => Promise<string[]> | string[];
   /**
@@ -363,7 +367,7 @@ export interface ToolLoopArgs {
    * The ceiling check uses max(prediction, largest call seen), so the first
    * call is bounded too. Omitted = largest call seen only.
    */
-  predictCallUsd?: (promptTokens: number) => number;
+  predictCallUsd?: (promptTokens: number, context?: LoopCallContext) => number;
 }
 
 export interface ToolLoopResult {
@@ -462,6 +466,12 @@ export const TOOLS = {
   delete_file: fn("delete_file", "Delete a file that is no longer used (orphaned page, superseded component). Refused while any other file still imports it, and for entry, router, managed or protected files.", {
     path: { type: "string" },
   }, ["path"]),
+  focus_secondary_page: fn("focus_secondary_page", "After validating shared foundations, hand a routine informational or read-only list page to the fast model for the next step of THIS conversation. Supply the complete composition/content specification and real shared dependency paths. Core pages, new business logic, schema, auth and complex workflows stay with you. Bundle this with the last foundation write; do not spend a separate planning call. You resume after the next step to review or repair the page.", {
+    path: { type: "string" },
+    kind: { type: "string", enum: ["informational", "read_only_list"] },
+    task: { type: "string" },
+    dependencies: { type: "array", items: { type: "string" }, minItems: 1 },
+  }, ["path", "kind", "task", "dependencies"]),
   finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) — the same check commit uses — so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, []),
 } satisfies Record<string, ToolSchema>;
 
@@ -743,6 +753,7 @@ export function createToolLoopState(goal: string): ToolLoopState {
 export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   const cfg: LoopConfig = { ...(args.light ? LIGHT_CONFIG : FULL_CONFIG), ...args.config };
   const tools = toolsFor(!!args.light);
+  if (args.secondaryPages?.length && !args.light) tools.push(TOOLS.focus_secondary_page);
   const allowed = new Set(tools.map((t) => t.function.name));
   const tree = new Map(args.files.map((f) => [f.path, f.content]));
   const state = createToolLoopState(args.goal);
@@ -942,6 +953,16 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   let lastRefusal = "";
   let sameRefusals = 0;
   let deadlocked = false;
+  let pendingSecondary: SecondaryWork | null = null;
+  let activeSecondary: SecondaryWork | null = null;
+  // Read through a function because exec assigns pending work asynchronously;
+  // control-flow analysis must not treat the outer variable as always null.
+  const takeSecondary = (): SecondaryWork | null => {
+    const next = pendingSecondary;
+    pendingSecondary = null;
+    return next;
+  };
+  const attemptedSecondary = new Set<string>();
 
   async function exec(call: ToolCallMsg): Promise<{ output: string; isError: boolean; miss?: boolean }> {
     const name = call.function.name as ToolName;
@@ -953,8 +974,26 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       return { output: fail(name, null, `Invalid JSON arguments for ${name}. If the content was long, it may have been cut off — write smaller files or use edit_file.`), isError: true };
     }
     const path = normPath(a.path);
+    // A fast step can inspect anything but only write its selected page. This
+    // narrows the handoff, not the user's scope: frontier resumes next step.
+    if (activeSecondary && !READ_ONLY.has(name) && !(["create_file", "edit_file"].includes(name) && path === activeSecondary.path)) {
+      return { output: `This step only writes ${activeSecondary.path}; frontier resumes for ${name}${path ? ` on ${path}` : ""}.`, isError: true };
+    }
 
     switch (name) {
+      case "focus_secondary_page": {
+        if (!args.secondaryPages || pendingSecondary) return { output: "A handoff is unavailable or already pending; continue this work on the frontier model.", isError: true };
+        if (attemptedSecondary.has(path)) return { output: "This page already had its fast step; review or repair it on the frontier model.", isError: true };
+        await refreshEvidence();
+        const work: SecondaryWork = {
+          path, kind: String(a.kind) as SecondaryWork["kind"], task: String(a.task ?? ""),
+          dependencies: Array.isArray(a.dependencies) ? a.dependencies.filter((p): p is string => typeof p === "string").map(normPath) : [],
+        };
+        const refusal = secondaryWorkRefusal(work, { pages: args.secondaryPages, files: tree, validation: state.validation, validatedHash: state.validatedHash, hash });
+        if (refusal) return { output: refusal, isError: true };
+        pendingSecondary = work;
+        return { output: `Next step uses the fast model for ${path}; you then resume with the result and unchanged verification.`, isError: false };
+      }
       case "read_file": {
         const c = lookup(path);
         if (c === undefined) {
@@ -1123,6 +1162,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
+        if (pendingSecondary) return { output: "Complete the pending secondary page before finish.", isError: true };
         const notReady = await finishGate();
         if (notReady) {
           sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
@@ -1181,10 +1221,23 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       compacted = true;
     }
 
+    activeSecondary = takeSecondary();
+    if (activeSecondary) {
+      // Recheck after the whole frontier response, since a later tool in that
+      // response could have changed a dependency after the handoff was made.
+      const refusal = secondaryWorkRefusal(activeSecondary, { pages: args.secondaryPages ?? [], files: tree, validation: state.validation, validatedHash: state.validatedHash, hash });
+      if (refusal) activeSecondary = null;
+      else {
+        attemptedSecondary.add(activeSecondary.path);
+        messages.push({ role: "user", content: secondaryWorkBrief(activeSecondary) });
+      }
+    }
+    const callContext: LoopCallContext = { secondary: activeSecondary };
+    const callTools = activeSecondary ? tools.filter((t) => ["read_file", "list_files", "search", "create_file", "edit_file"].includes(t.function.name)) : tools;
     const predictedUsd = (() => {
       if (!args.predictCallUsd) return 0;
       try {
-        const p = args.predictCallUsd(estimateTokens(messages));
+        const p = args.predictCallUsd(estimateTokens(messages), callContext);
         return Number.isFinite(p) && p > 0 ? p : 0;
       } catch {
         return 0;
@@ -1200,7 +1253,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     let reply: ModelReply;
     try {
-      reply = await args.callModel(messages, tools, args.signal);
+      reply = await args.callModel(messages, callTools, args.signal, callContext);
     } catch (e) {
       // A failed model call is still an observable step.
       const failed: CallTrace = {
@@ -1231,7 +1284,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     const actions: ActionRecord[] = [];
     stepRepairs = 0;
 
-    if (reply.toolCalls.length === 0) {
+    if (reply.toolCalls.length === 0 && activeSecondary) {
+      messages.push({ role: "user", content: "Frontier resumes: the routine step returned without writing; complete this page yourself." });
+    } else if (reply.toolCalls.length === 0) {
       // Implicit finish (Webby: no tool calls = done) still passes the gate.
       const notReady = await finishGate();
       if (!notReady) state.finished = true;
@@ -1334,6 +1389,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     };
     traces.push(trace);
     try { args.onTrace?.(trace); } catch { /* telemetry never breaks the loop */ }
+    if (activeSecondary) {
+      messages.push({ role: "user", content: `Frontier resumes after the routine step for ${activeSecondary.path}. Review its implementation against the brief and design; fix any errors or omissions yourself. The same validation and finish gates still apply.` });
+    }
 
     if (!state.finished) {
       recent.push(...actions);

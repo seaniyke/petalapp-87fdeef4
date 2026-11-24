@@ -38967,7 +38967,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -71069,7 +71068,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -143595,7 +143593,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -146652,7 +146649,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146754,6 +146750,7 @@ __export(prd_requirements_exports, {
   hashContent: () => hashContent,
   mergeRequirements: () => mergeRequirements,
   orderByDependencies: () => orderByDependencies,
+  positiveRequirementText: () => positiveRequirementText,
   productProgress: () => productProgress,
   renderProgressSummary: () => renderProgressSummary,
   renderRequirementsBlock: () => renderRequirementsBlock,
@@ -146766,12 +146763,18 @@ function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 }
 function splitRequestedItems(brief) {
-  const text = brief.replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).filter((s) => !isStyleSentence(s)).join(" ");
+  const text = positiveRequirementText(brief).replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).filter((s) => !isStyleSentence(s)).join(" ");
   const m = text.match(/\bpages?\s*:\s*(.+)$/i) ?? text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
   let tail = m ? m[1] : text;
   for (let i = 0; i < 4 && /\([^()]*\)/.test(tail); i++) tail = tail.replace(/\s*\([^()]*\)/g, "");
   tail = tail.replace(/[()]/g, " ");
   return tail.split(/,|;|\band\b|\bplus\b|\+|[.!?](?=\s|$)/i).map((s) => s.replace(/[.!?:]+$/g, "").trim()).filter((s) => s.length >= 3 && s.split(" ").length <= 6).filter((s) => !isNotARequirement(s));
+}
+function positiveRequirementText(brief) {
+  return brief.replace(
+    /\b(?:no|without|never|avoid|skip|exclude|excluding|don['’]?t(?:\s+(?:want|need|include|add|build|use))?|do not(?:\s+(?:want|need|include|add|build|use))?)\s+(?!only\b)[\s\S]*?(?=[.!?;\n]|\b(?:but|however|instead)\b|\b(?:and\s+)?(?:add|include|build|create|keep|enable)\b|$)/gi,
+    " "
+  );
 }
 function isStyleSentence(sentence) {
   const s = sentence.toLowerCase().trim();
@@ -154473,6 +154476,34 @@ var init_missing_import_repair = __esm({
   }
 });
 
+// src/server/engine/secondary-work.ts
+function secondaryWorkRefusal(work, ev) {
+  const page = ev.pages.find((p2) => p2.file === work.path);
+  if (!page || !/^src\/pages\/[\w/-]+\.tsx$/.test(work.path)) return "Use the frontier model for unplanned or shared files.";
+  if (page.route === "/" || page.route === "/dashboard" || ev.pages[0]?.file === work.path) return "The core page stays on the frontier model.";
+  if (!["informational", "read_only_list"].includes(work.kind) || !work.task.trim()) return "Supply a routine page specification, otherwise continue on the frontier model.";
+  if (/\b(auth(?:entication|orization)?|permissions?|schema|migration|payments?|checkout|booking|state.machine|workflow|webhook|write.api|mutations?)\b/i.test(work.task)) return "Complex behaviour stays on the frontier model.";
+  if (!work.dependencies.length) return "Build and validate the shared dependencies first.";
+  let hasFoundation = false;
+  for (const path of work.dependencies) {
+    const content = ev.files.get(path);
+    if (content === void 0 || !ev.validation.has(path) || ev.validation.get(path)?.length || ev.validatedHash.get(path) !== ev.hash(content)) return `Dependency ${path} must exist and be validated at its current content first.`;
+    if (!path.startsWith("src/pages/") && path.startsWith("src/")) hasFoundation = true;
+  }
+  return hasFoundation ? null : "A validated shared foundation is required; page names alone are not evidence.";
+}
+function secondaryWorkBrief(work) {
+  return `Routine secondary page: ${work.path} (${work.kind}).
+${work.task}
+Use the already validated dependencies: ${work.dependencies.join(", ")}. Keep the committed design, full requested functionality and image requirements. Only this page may be written in this step. If it needs new shared behaviour, report that need instead; the frontier model resumes next. Do not call finish; the frontier model reviews the result and completes the request.`;
+}
+var init_secondary_work = __esm({
+  "src/server/engine/secondary-work.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+  }
+});
+
 // src/server/engine/tool-loop.ts
 var tool_loop_exports = {};
 __export(tool_loop_exports, {
@@ -154815,6 +154846,7 @@ function createToolLoopState(goal) {
 async function runToolLoop(args) {
   const cfg = { ...args.light ? LIGHT_CONFIG : FULL_CONFIG, ...args.config };
   const tools = toolsFor(!!args.light);
+  if (args.secondaryPages?.length && !args.light) tools.push(TOOLS.focus_secondary_page);
   const allowed = new Set(tools.map((t) => t.function.name));
   const tree = new Map(args.files.map((f) => [f.path, f.content]));
   const state = createToolLoopState(args.goal);
@@ -154984,6 +155016,14 @@ ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and 
   let lastRefusal = "";
   let sameRefusals = 0;
   let deadlocked = false;
+  let pendingSecondary = null;
+  let activeSecondary = null;
+  const takeSecondary = () => {
+    const next = pendingSecondary;
+    pendingSecondary = null;
+    return next;
+  };
+  const attemptedSecondary = /* @__PURE__ */ new Set();
   async function exec(call) {
     const name = call.function.name;
     if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
@@ -154994,7 +155034,25 @@ ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and 
       return { output: fail(name, null, `Invalid JSON arguments for ${name}. If the content was long, it may have been cut off \u2014 write smaller files or use edit_file.`), isError: true };
     }
     const path = normPath(a2.path);
+    if (activeSecondary && !READ_ONLY.has(name) && !(["create_file", "edit_file"].includes(name) && path === activeSecondary.path)) {
+      return { output: `This step only writes ${activeSecondary.path}; frontier resumes for ${name}${path ? ` on ${path}` : ""}.`, isError: true };
+    }
     switch (name) {
+      case "focus_secondary_page": {
+        if (!args.secondaryPages || pendingSecondary) return { output: "A handoff is unavailable or already pending; continue this work on the frontier model.", isError: true };
+        if (attemptedSecondary.has(path)) return { output: "This page already had its fast step; review or repair it on the frontier model.", isError: true };
+        await refreshEvidence();
+        const work = {
+          path,
+          kind: String(a2.kind),
+          task: String(a2.task ?? ""),
+          dependencies: Array.isArray(a2.dependencies) ? a2.dependencies.filter((p2) => typeof p2 === "string").map(normPath) : []
+        };
+        const refusal = secondaryWorkRefusal(work, { pages: args.secondaryPages, files: tree, validation: state.validation, validatedHash: state.validatedHash, hash });
+        if (refusal) return { output: refusal, isError: true };
+        pendingSecondary = work;
+        return { output: `Next step uses the fast model for ${path}; you then resume with the result and unchanged verification.`, isError: false };
+      }
       case "read_file": {
         const c = lookup(path);
         if (c === void 0) {
@@ -155154,6 +155212,7 @@ ${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, 
         return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
+        if (pendingSecondary) return { output: "Complete the pending secondary page before finish.", isError: true };
         const notReady = await finishGate();
         if (notReady) {
           sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
@@ -155203,10 +155262,21 @@ ${notReady}`, isError: true };
       readSeen.clear();
       compacted = true;
     }
+    activeSecondary = takeSecondary();
+    if (activeSecondary) {
+      const refusal = secondaryWorkRefusal(activeSecondary, { pages: args.secondaryPages ?? [], files: tree, validation: state.validation, validatedHash: state.validatedHash, hash });
+      if (refusal) activeSecondary = null;
+      else {
+        attemptedSecondary.add(activeSecondary.path);
+        messages.push({ role: "user", content: secondaryWorkBrief(activeSecondary) });
+      }
+    }
+    const callContext = { secondary: activeSecondary };
+    const callTools = activeSecondary ? tools.filter((t) => ["read_file", "list_files", "search", "create_file", "edit_file"].includes(t.function.name)) : tools;
     const predictedUsd = (() => {
       if (!args.predictCallUsd) return 0;
       try {
-        const p2 = args.predictCallUsd(estimateTokens2(messages));
+        const p2 = args.predictCallUsd(estimateTokens2(messages), callContext);
         return Number.isFinite(p2) && p2 > 0 ? p2 : 0;
       } catch {
         return 0;
@@ -155222,7 +155292,7 @@ ${notReady}`, isError: true };
     const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     let reply;
     try {
-      reply = await args.callModel(messages, tools, args.signal);
+      reply = await args.callModel(messages, callTools, args.signal, callContext);
     } catch (e) {
       const failed = {
         call: state.iteration,
@@ -155272,7 +155342,9 @@ ${notReady}`, isError: true };
     const before = snapshotEvidence(state, tree);
     const actions = [];
     stepRepairs = 0;
-    if (reply.toolCalls.length === 0) {
+    if (reply.toolCalls.length === 0 && activeSecondary) {
+      messages.push({ role: "user", content: "Frontier resumes: the routine step returned without writing; complete this page yourself." });
+    } else if (reply.toolCalls.length === 0) {
       const notReady = await finishGate();
       if (!notReady) state.finished = true;
       else messages.push({ role: "user", content: `You stopped, but:
@@ -155367,6 +155439,9 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
       args.onTrace?.(trace);
     } catch {
     }
+    if (activeSecondary) {
+      messages.push({ role: "user", content: `Frontier resumes after the routine step for ${activeSecondary.path}. Review its implementation against the brief and design; fix any errors or omissions yourself. The same validation and finish gates still apply.` });
+    }
     if (!state.finished) {
       recent.push(...actions);
       if (recent.length > 40) recent.splice(0, recent.length - 40);
@@ -155419,6 +155494,7 @@ var init_tool_loop = __esm({
     init_missing_import_repair();
     init_identifiers_server();
     init_circuit_breaker();
+    init_secondary_work();
     FULL_CONFIG = {
       maxIterations: 100,
       finalizeIterations: 8,
@@ -155469,6 +155545,12 @@ var init_tool_loop = __esm({
       delete_file: fn("delete_file", "Delete a file that is no longer used (orphaned page, superseded component). Refused while any other file still imports it, and for entry, router, managed or protected files.", {
         path: { type: "string" }
       }, ["path"]),
+      focus_secondary_page: fn("focus_secondary_page", "After validating shared foundations, hand a routine informational or read-only list page to the fast model for the next step of THIS conversation. Supply the complete composition/content specification and real shared dependency paths. Core pages, new business logic, schema, auth and complex workflows stay with you. Bundle this with the last foundation write; do not spend a separate planning call. You resume after the next step to review or repair the page.", {
+        path: { type: "string" },
+        kind: { type: "string", enum: ["informational", "read_only_list"] },
+        task: { type: "string" },
+        dependencies: { type: "array", items: { type: "string" }, minItems: 1 }
+      }, ["path", "kind", "task", "dependencies"]),
       finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) \u2014 the same check commit uses \u2014 so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, [])
     };
     READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
@@ -181542,11 +181624,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               }
             );
             const firstBuildModel = defaultFirstBuildModel();
-            const callModel = makeCallModel2(
+            const secondaryModel = defaultTextModel();
+            let lastLoopModel = firstBuildModel;
+            const adapterFor = (selectedModel) => makeCallModel2(
               (reqBody, signal) => withProviderRetry2(
                 () => aiChatCompletions({
                   feature: "generate",
-                  body: { ...reqBody, reasoning: { enabled: false }, model: firstBuildModel },
+                  body: { ...reqBody, reasoning: { enabled: false }, model: selectedModel },
                   timeoutTier: "stream_first_build",
                   lockCallerModel: true,
                   codeOutput: true,
@@ -181565,10 +181649,10 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               ),
               (u) => {
                 if (!u) return;
-                pageWriteUsages.push({ ...u, model: firstBuildModel });
+                pageWriteUsages.push({ ...u, model: selectedModel });
                 void updateLastCallUsage({
                   feature: "generate",
-                  model: firstBuildModel,
+                  model: selectedModel,
                   promptTokens: u.prompt_tokens ?? null,
                   completionTokens: u.completion_tokens ?? null,
                   totalTokens: u.total_tokens ?? null,
@@ -181578,6 +181662,14 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 });
               }
             );
+            const frontierAdapter = adapterFor(firstBuildModel);
+            const secondaryAdapter = adapterFor(secondaryModel);
+            const callModel = async (messages2, tools, signal, context) => {
+              lastLoopModel = context?.secondary ? secondaryModel : firstBuildModel;
+              const reply = await (context?.secondary ? secondaryAdapter : frontierAdapter)(messages2, tools, signal);
+              return { ...reply, model: reply.model ?? lastLoopModel };
+            };
+            turnStrategy.firstBuildRouting = { frontier: firstBuildModel, secondary: secondaryModel, mode: "validated_secondary_handoff" };
             const fbContext = assembleFirstBuildContext({
               knowledge: {
                 basePrompt: baseSystem,
@@ -181649,16 +181741,16 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } }, firstBuildModel).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } }, r.model ?? lastLoopModel).costUsd;
                   if (c != null) return c;
                 }
-                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd2(lastPromptTokens, loopModelPrice));
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd2(lastPromptTokens, modelPricePerM2(lastLoopModel)));
               },
               // Checked before EVERY call, including the first: all prompt
               // tokens at the uncached rate plus a typical write's output.
-              predictCallUsd: (promptTokens) => {
+              predictCallUsd: (promptTokens, context) => {
                 lastPromptTokens = promptTokens;
-                return predictCallCostUsd2(promptTokens, loopModelPrice);
+                return predictCallCostUsd2(promptTokens, modelPricePerM2(context?.secondary ? secondaryModel : firstBuildModel));
               },
               goal: lastUserText,
               system: fbContext.system,
@@ -181688,6 +181780,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)).filter((f) => !isPausedKitPath(f.path)).concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
+              secondaryPages: planned,
               // THE readiness authority: the exact proposed-tree transform and
               // source verification commitTurn runs (scaffold + shell, then
               // verifyProposedSource with the same requested routes).

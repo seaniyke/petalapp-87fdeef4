@@ -1,4 +1,9 @@
 # Execution-engine replacement roadmap
+## Excluded requirements and first-build model routing (24 Nov)
+- [x] Correct exclusion-list extraction without dropping positively requested features; add regression tests.
+- [x] Keep frontier reasoning for foundations and complex work; add frontier-specified informational/read-only page handoffs to the fast model, requiring current validated dependencies; return to frontier review after one step, with unchanged verification and model-specific accounting.
+- [x] Run routing/integration tests, version and rebuild the agent bundle, and document deployment plus matched-cost validation requirements.
+- [ ] Measure live before/after cost and quality for equivalent first builds — requires deploying the new `2026-11-24-secondary-work-exclusions` service package; live health still reports `2026-11-24-proof-led-repairs`. No measured savings percentage claimed. See docs/ops/secondary-work-exclusions-2026-11-24.md.
 ## Root-cause generation reliability (24 Nov)
 - [x] Replace regex scope guesses with the existing compiler authority; retain genuine undefined-name failures, including JavaScript, and batch checks over the proposed tree.
 - [x] Let evidence-led repair scope include the shared files implicated by a defect, preserving user/plan protections and design ownership.

@@ -99,7 +99,7 @@ export function splitRequestedItems(brief: string): string[] {
   // Whole sentences about the look or the amount of copy ("The look should
   // be modern, sleek, native and natural.", "Keep the home page light on
   // words.") describe how to build, so they never become requirements.
-  const text = brief
+  const text = positiveRequirementText(brief)
     .replace(/\s+/g, " ")
     .split(/(?<=[.!?])\s+/)
     .filter((s) => !isStyleSentence(s))
@@ -118,6 +118,17 @@ export function splitRequestedItems(brief: string): string[] {
     .map((s) => s.replace(/[.!?:]+$/g, "").trim())
     .filter((s) => s.length >= 3 && s.split(" ").length <= 6)
     .filter((s) => !isNotARequirement(s));
+}
+
+/** Remove exclusion spans BEFORE splitting lists: "no A, B and C" excludes
+ * all three, not just A. Explicit positive clauses resume requested scope.
+ * This is local to requirement extraction; the original brief remains intact.
+ */
+export function positiveRequirementText(brief: string): string {
+  return brief.replace(
+    /\b(?:no|without|never|avoid|skip|exclude|excluding|don['’]?t(?:\s+(?:want|need|include|add|build|use))?|do not(?:\s+(?:want|need|include|add|build|use))?)\s+(?!only\b)[\s\S]*?(?=[.!?;\n]|\b(?:but|however|instead)\b|\b(?:and\s+)?(?:add|include|build|create|keep|enable)\b|$)/gi,
+    " ",
+  );
 }
 
 /**
