@@ -1,4 +1,7 @@
 # Execution-engine replacement roadmap
+## Complex live validation (24 Nov)
+- [x] Confirm deployed secondary-work version and exact committed bundle hash; 38 targeted tests pass.
+- [ ] Run an isolated complex hospitality app, apply a site-wide layout edit, inspect delivered workflows on phone/desktop, and report recorded costs and repair handling against historical evidence.
 ## Excluded requirements and first-build model routing (24 Nov)
 - [x] Correct exclusion-list extraction without dropping positively requested features; add regression tests.
 - [x] Keep frontier reasoning for foundations and complex work; add frontier-specified informational/read-only page handoffs to the fast model, requiring current validated dependencies; return to frontier review after one step, with unchanged verification and model-specific accounting.
