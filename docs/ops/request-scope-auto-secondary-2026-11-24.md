@@ -37,3 +37,9 @@ Removing forced template requirements is not proof that a model can never invent
 5. Report sample size, cost basis, total cost, elapsed time, delivery/verification rates and repair outcomes. Savings = `(matched baseline cost − new cost) / matched baseline cost × 100`. A negative percentage means increased cost. Without a matched baseline, report the observed costs without attributing a percentage to this change.
 
 Deployment and measured production savings remain pending.
+## Live validation (24 Nov 2026, builder 2026-11-24-request-scope-auto-secondary)
+
+Project `6413e415-815d-42cf-8062-e182c9015a2c`, first turn `288e893e-808d-41d6-8a44-158fa39b9a31`, edit turn `bc879c6c-debb-4a42-8be9-63e4179f0a76`.
+
+- First build: 9 pages, exactly the 8 named + Home; no suppliers/purchase orders/stock/settings. 8 AI calls, estimated $4.51 (vs $6.97 previous test, -35%; vs Shiftwell $5.62, -20%). 0 retries, 0 recovery calls. Automatic handoff fired twice (Facilities, About on Flash). Flash calls carried 80k–99k prompt tokens with 0 cached tokens. 0 pictures generated although Facilities asked for real pictures. App title in index.html said "Shiftwell Internal Shop".
+- Site-wide layout edit: failed, nothing changed, not charged, $0.43 internal cost. Commit rejected `write src/styles.css` with reason "other" (most likely ledger `unread_write`: the stylesheet was never read into the edit context because the structural edit resolved an empty target scope). The saved chat reply wrongly blamed the build server and still says "Kimble".
